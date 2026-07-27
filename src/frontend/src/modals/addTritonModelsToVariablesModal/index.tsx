@@ -86,13 +86,23 @@ export default function AddTritonModelsToVariablesModal({
   const handleSubmit = async () => {
     if (!canSubmit) return;
     const chosen = models.filter((m) => selected.has(m.name));
+    // Build the gRPC URL: <host from base_url>:<rpc_port>
+    // e.g. base_url="http://localhost:8000", rpc_port=8001 -> "localhost:8001"
+    let grpcHost = "";
+    try {
+      grpcHost = new URL(server.base_url).hostname || "";
+    } catch {
+      grpcHost = "";
+    }
+    const grpcUrl = `${grpcHost}:${server.rpc_port}`;
     const results = await Promise.allSettled(
       chosen.map((m) =>
         addVariable({
           name: `${namePrefix}_${m.name}`,
           value: JSON.stringify({
             server_id: server.id,
-            ip: server.base_url,
+            base_url: server.base_url,
+            grpc_url: grpcUrl,
             model: m.name,
           }),
           type: "Generic",
@@ -149,7 +159,9 @@ export default function AddTritonModelsToVariablesModal({
               <span className="font-medium">{server.name}</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-muted-foreground">IP</span>
+              <span className="text-muted-foreground">
+                {t("triton.modal.modelsToVarsBaseUrlLabel")}
+              </span>
               <span className="font-mono break-all">{server.base_url}</span>
             </div>
             <div className="flex flex-col">

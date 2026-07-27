@@ -21,6 +21,9 @@ if TYPE_CHECKING:
 
     from sqlmodel.ext.asyncio.session import AsyncSession
 
+# Maximum valid TCP port number (RFC 793). Keep in sync with the model validator.
+_MAX_PORT = 65535
+
 
 def _strip_or_raise(value: str, field_name: str) -> str:
     stripped = value.strip()
@@ -58,6 +61,7 @@ def to_read(server: TritonServer) -> TritonServerRead:
         user_id=server.user_id,
         name=server.name,
         base_url=server.base_url,
+        rpc_port=server.rpc_port,
         notes=server.notes,
         has_auth_token=bool(server.auth_token),
         created_at=server.created_at,  # type: ignore[arg-type]
@@ -105,12 +109,16 @@ async def create_triton_server(
     user_id: UUID | str,
     name: str,
     base_url: str,
+    rpc_port: int,
     auth_token: str | None,
     notes: str | None,
 ) -> TritonServer:
     user_uuid = parse_uuid(user_id, field_name="user_id")
     name_s = _strip_or_raise(name, "name")
     base_url_s = _strip_or_raise(base_url, "base_url")
+    if rpc_port is None or rpc_port <= 0 or rpc_port > _MAX_PORT:
+        msg = f"rpc_port must be an integer in the range 1-{_MAX_PORT}"
+        raise ValueError(msg)
     notes_n = normalize_string_or_none(notes)
 
     encrypted = _encrypt_token(auth_token) if auth_token is not None else None
@@ -120,6 +128,7 @@ async def create_triton_server(
         user_id=user_uuid,
         name=name_s,
         base_url=base_url_s,
+        rpc_port=rpc_port,
         auth_token=encrypted,
         notes=notes_n,
         created_at=now,
@@ -147,6 +156,7 @@ async def update_triton_server(
     server: TritonServer,
     name: str | None = None,
     base_url: str | None = None,
+    rpc_port: int | None = None,
     auth_token: str | None = None,
     notes: str | None = None,
 ) -> TritonServer:
@@ -154,6 +164,11 @@ async def update_triton_server(
         server.name = _strip_or_raise(name, "name")
     if base_url is not None:
         server.base_url = _strip_or_raise(base_url, "base_url")
+    if rpc_port is not None:
+        if rpc_port <= 0 or rpc_port > _MAX_PORT:
+            msg = f"rpc_port must be an integer in the range 1-{_MAX_PORT}"
+            raise ValueError(msg)
+        server.rpc_port = rpc_port
     if auth_token is not None:
         stripped = auth_token.strip()
         if not stripped:

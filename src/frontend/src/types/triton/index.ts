@@ -3,6 +3,7 @@ export type TritonServerType = {
   user_id: string;
   name: string;
   base_url: string;
+  rpc_port: number;
   notes: string | null;
   has_auth_token: boolean;
   created_at: string;
@@ -12,6 +13,7 @@ export type TritonServerType = {
 export type TritonServerCreateType = {
   name: string;
   base_url: string;
+  rpc_port: number;
   auth_token?: string | null;
   notes?: string | null;
 };
@@ -19,6 +21,7 @@ export type TritonServerCreateType = {
 export type TritonServerUpdateType = {
   name?: string;
   base_url?: string;
+  rpc_port?: number;
   auth_token?: string | null;
   notes?: string | null;
 };
