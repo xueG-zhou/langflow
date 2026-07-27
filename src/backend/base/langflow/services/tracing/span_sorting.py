@@ -63,8 +63,9 @@ def topological_sort_spans(
     sort over the batch so that every parent is inserted first.
 
     Spans whose ``parent_span_id`` points outside the current batch are
-    treated as roots (the parent already exists in the DB from a prior
-    flush).
+    treated as roots and have the unresolved parent removed. Native traces
+    are flushed as a complete batch, so retaining such a reference would
+    violate the immediate foreign-key constraint.
     """
     batch_ids = {span_uuid for _, span_uuid, _ in resolved}
 
@@ -77,8 +78,14 @@ def topological_sort_spans(
         progress = False
         for item in remaining:
             _, span_uuid, parent_uuid = item
-            # Insert if: no parent, parent outside batch, or parent already inserted
-            if parent_uuid is None or parent_uuid not in batch_ids or parent_uuid in inserted:
+            # A parent outside the complete trace batch cannot be satisfied by
+            # insertion ordering. Drop that orphaned relationship so one
+            # missing Loop/component span does not abort the whole trace.
+            if parent_uuid is not None and parent_uuid not in batch_ids:
+                sorted_spans.append((item[0], span_uuid, None))
+                inserted.add(span_uuid)
+                progress = True
+            elif parent_uuid is None or parent_uuid in inserted:
                 sorted_spans.append(item)
                 inserted.add(span_uuid)
                 progress = True
