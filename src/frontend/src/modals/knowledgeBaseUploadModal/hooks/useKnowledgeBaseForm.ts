@@ -46,9 +46,9 @@ import { formatFileSize } from "../utils";
  * server-side validation in each backend's ``_build_vector_store`` so
  * the user sees the problem inline before the request ever lands.
  *
- * Only the actively-registered providers (Chroma + OpenSearch) are
+ * Only the actively-registered providers are
  * validated here — see ``DBProviderInput`` for the UI side. Stubbed
- * providers (mongodb / astra / postgres) are rejected up front by the
+ * providers (mongodb / astra) are rejected up front by the
  * server schema validator.
  */
 function validateBackendConfig(
@@ -63,6 +63,12 @@ function validateBackendConfig(
     const indexName = config.index_name;
     if (typeof indexName !== "string" || !indexName.trim()) {
       return "OpenSearch requires an index_name";
+    }
+  }
+  if (backendType === "postgres") {
+    const collectionName = config.collection_name;
+    if (typeof collectionName !== "string" || !collectionName.trim()) {
+      return "Postgres requires a collection_name";
     }
   }
   return null;

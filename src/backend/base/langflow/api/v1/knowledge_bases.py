@@ -738,16 +738,19 @@ async def create_knowledge_base(
         KBStorageHelper.clear_deletion_sentinel(kb_path)
         kb_id = uuid.uuid4()
 
-        # Initialize Chroma storage and collection immediately
-        # This ensures files exist for read operations and avoids 'readonly' errors later
-        try:
-            client = KBStorageHelper.get_fresh_chroma_client(kb_path)
-            client.create_collection(name=kb_name, **chroma_client_create_collection_kwargs())
-        except (OSError, ValueError, chromadb.errors.ChromaError) as e:
-            logger.warning("Initial Chroma setup for %s failed: %s", kb_name, e)
-        finally:
-            client = None
-            KBStorageHelper.release_chroma_resources(kb_path)
+        # Initialize only local Chroma immediately. Remote backends create
+        # their collection/index on first ingestion and keep no vector data in
+        # this directory.
+        chroma_mode = str((request.backend_config or {}).get("mode", "local")).lower()
+        if request.backend_type == BackendType.CHROMA.value and chroma_mode != "cloud":
+            try:
+                client = KBStorageHelper.get_fresh_chroma_client(kb_path)
+                client.create_collection(name=kb_name, **chroma_client_create_collection_kwargs())
+            except (OSError, ValueError, chromadb.errors.ChromaError) as e:
+                logger.warning("Initial Chroma setup for %s failed: %s", kb_name, e)
+            finally:
+                client = None
+                KBStorageHelper.release_chroma_resources(kb_path)
 
         # Serialize column_config for persistence
         column_config_dicts = None

@@ -26,6 +26,13 @@ export const CHROMA_CLOUD_VARIABLES = {
   REGION: "CHROMA_REGION",
 } as const;
 
+export const POSTGRES_VARIABLES = {
+  CONNECTION_URL: "POSTGRES_VECTOR_URL",
+  USERNAME: "POSTGRES_VECTOR_USERNAME",
+  PASSWORD: "POSTGRES_VECTOR_PASSWORD", // pragma: allowlist secret
+  COLLECTION_NAME: "POSTGRES_VECTOR_COLLECTION_NAME",
+} as const;
+
 export type DBProviderId =
   | "chroma"
   | "chroma_cloud"
@@ -36,7 +43,7 @@ export type DBProviderId =
 
 export type AvailableDBProviderId = Extract<
   DBProviderId,
-  "chroma" | "chroma_cloud" | "opensearch"
+  "chroma" | "chroma_cloud" | "opensearch" | "postgres"
 >;
 
 export interface DBProviderTextField {
@@ -223,8 +230,37 @@ export const DB_PROVIDER_OPTIONS: DBProviderOption[] = [
     label: "Postgres pgvector",
     description: "Postgres-backed vector storage.",
     icon: "Postgres",
-    status: "coming_soon",
-    configFields: [],
+    status: "available",
+    configFields: [
+      {
+        label: "Connection URL",
+        variableKey: POSTGRES_VARIABLES.CONNECTION_URL,
+        required: true,
+        isSecret: false,
+        placeholder: "postgresql+psycopg://host:5432/database",
+      },
+      {
+        label: "Username",
+        variableKey: POSTGRES_VARIABLES.USERNAME,
+        required: true,
+        isSecret: false,
+        placeholder: "postgres",
+      },
+      {
+        label: "Password",
+        variableKey: POSTGRES_VARIABLES.PASSWORD,
+        required: true,
+        isSecret: true,
+        placeholder: "Enter PostgreSQL password",
+      },
+      {
+        label: "Default collection name",
+        variableKey: POSTGRES_VARIABLES.COLLECTION_NAME,
+        required: true,
+        isSecret: false,
+        placeholder: "langflow_knowledge",
+      },
+    ],
   },
 ];
 
@@ -276,6 +312,7 @@ export function getActiveDBProvider(
   );
   if (configuredProvider === "opensearch") return "opensearch";
   if (configuredProvider === "chroma_cloud") return "chroma_cloud";
+  if (configuredProvider === "postgres") return "postgres";
   return "chroma";
 }
 
@@ -303,6 +340,17 @@ export function getDBProviderConfig(
       cloud_region:
         getGlobalVariableValue(variables, CHROMA_CLOUD_VARIABLES.REGION) ??
         "us-east-1",
+    };
+  }
+
+  if (providerType === "postgres") {
+    return {
+      connection_url_variable: POSTGRES_VARIABLES.CONNECTION_URL,
+      username_variable: POSTGRES_VARIABLES.USERNAME,
+      password_variable: POSTGRES_VARIABLES.PASSWORD,
+      collection_name:
+        getGlobalVariableValue(variables, POSTGRES_VARIABLES.COLLECTION_NAME) ??
+        "",
     };
   }
 
@@ -358,6 +406,7 @@ export function resolveUIBackendType(
   backendConfig: Record<string, unknown> | undefined,
 ): AvailableDBProviderId {
   if (backendType === "opensearch") return "opensearch";
+  if (backendType === "postgres") return "postgres";
   // Already a frontend UI ID — pass through directly.
   if (backendType === "chroma_cloud") return "chroma_cloud";
   // Server always stores "chroma" for both modes; mode discriminates.

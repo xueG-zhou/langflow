@@ -536,6 +536,24 @@ def test_get_embeddings_openai_basic(mock_get_class, mock_get_api_key):
     assert kwargs["api_key"] == "sk-test"  # pragma: allowlist secret
 
 
+@patch("lfx.base.models.unified_models.get_api_key_for_provider")
+@patch("lfx.base.models.unified_models.get_embedding_class")
+def test_get_embeddings_bge_m3_sends_text_instead_of_token_ids(mock_get_class, mock_get_api_key):
+    mock_get_api_key.return_value = "sk-test"
+    mock_embedding_class = MagicMock()
+    mock_get_class.return_value = mock_embedding_class
+
+    get_embeddings(
+        [_make_openai_embedding_model(name="BAAI/bge-m3")],
+        api_key="sk-test",
+        api_base="http://embeddings.example/v1",
+    )
+
+    kwargs = mock_embedding_class.call_args.kwargs
+    assert kwargs["check_embedding_ctx_length"] is False
+    assert kwargs["base_url"] == "http://embeddings.example/v1"
+
+
 @pytest.mark.parametrize(
     ("env_values", "expected_base_url"),
     [

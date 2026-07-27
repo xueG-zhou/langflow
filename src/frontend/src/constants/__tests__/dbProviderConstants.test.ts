@@ -4,6 +4,7 @@ import {
   getDefaultDBProviderConfig,
   isDBProviderConfigured,
   OPENSEARCH_VARIABLES,
+  POSTGRES_VARIABLES,
 } from "../dbProviderConstants";
 
 const variable = (name: string, value: string) => ({
@@ -65,6 +66,45 @@ describe("dbProviderConstants", () => {
       use_ssl: false,
       verify_certs: false,
     });
+  });
+
+  it("builds Postgres provider config from credential variable names", () => {
+    expect(
+      getDefaultDBProviderConfig([
+        variable(ACTIVE_DB_PROVIDER_VARIABLE, "postgres"),
+      ]),
+    ).toEqual({
+      backendType: "postgres",
+      backendConfig: {
+        connection_url_variable: POSTGRES_VARIABLES.CONNECTION_URL,
+        username_variable: POSTGRES_VARIABLES.USERNAME,
+        password_variable: POSTGRES_VARIABLES.PASSWORD,
+        collection_name: "",
+      },
+    });
+  });
+
+  it("requires all Postgres connection settings", () => {
+    expect(
+      isDBProviderConfigured("postgres", [
+        variable(
+          POSTGRES_VARIABLES.CONNECTION_URL,
+          "postgresql+psycopg://db:5432/langflow",
+        ),
+        variable(POSTGRES_VARIABLES.USERNAME, "postgres"),
+      ]),
+    ).toBe(false);
+    expect(
+      isDBProviderConfigured("postgres", [
+        variable(
+          POSTGRES_VARIABLES.CONNECTION_URL,
+          "postgresql+psycopg://db:5432/langflow",
+        ),
+        variable(POSTGRES_VARIABLES.USERNAME, "postgres"),
+        variable(POSTGRES_VARIABLES.PASSWORD, "secret"),
+        variable(POSTGRES_VARIABLES.COLLECTION_NAME, "langflow_knowledge"),
+      ]),
+    ).toBe(true);
   });
 
   it("treats unrecognized SSL variable values as the default", () => {

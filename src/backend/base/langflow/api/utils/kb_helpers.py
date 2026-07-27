@@ -29,6 +29,7 @@ from lfx.base.knowledge_bases.backends.base import (
     METADATA_KEY_SOURCE_TYPE,
     METADATA_KEY_TOTAL_CHUNKS,
     BaseVectorStoreBackend,
+    NonRetryableBackendError,
 )
 from lfx.base.knowledge_bases.ingestion_sources import (
     FileUploadSource,
@@ -1076,6 +1077,8 @@ class KBIngestionHelper:
                 try:
                     await backend.add_documents(batch)
                     break
+                except NonRetryableBackendError:
+                    raise
                 except Exception as exc:
                     if attempt == MAX_RETRY_ATTEMPTS - 1:
                         raise

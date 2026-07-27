@@ -1,6 +1,6 @@
 """Stub-state tests for the disabled DB-connector backends.
 
-The Astra / MongoDB / Postgres backends ship as stubs in this phase
+The Astra / MongoDB backends ship as stubs in this phase
 (see each module's docstring under
 ``lfx.base.knowledge_bases.backends``). These tests pin the
 "intentionally disabled" contract so accidental re-registration or
@@ -24,7 +24,6 @@ from lfx.base.knowledge_bases.backends import (
     AstraBackend,
     BackendType,
     MongoDBBackend,
-    PostgresBackend,
     create_backend,
     registered_backends,
 )
@@ -35,7 +34,6 @@ if TYPE_CHECKING:
 _STUBBED_BACKENDS = (
     (BackendType.ASTRA, AstraBackend),
     (BackendType.MONGODB, MongoDBBackend),
-    (BackendType.POSTGRES, PostgresBackend),
 )
 
 

@@ -56,6 +56,10 @@ interface StepConfigurationProps {
   columnConfig: ColumnConfigRow[];
   onColumnConfigChange: (value: ColumnConfigRow[]) => void;
   backendType: AvailableDBProviderId;
+  backendConfig: Record<string, DBProviderConfigValue>;
+  onBackendConfigChange: (
+    config: Record<string, DBProviderConfigValue>,
+  ) => void;
   onBackendChange: (
     type: AvailableDBProviderId,
     config: Record<string, DBProviderConfigValue>,
@@ -90,6 +94,8 @@ export function StepConfiguration({
   columnConfig,
   onColumnConfigChange,
   backendType,
+  backendConfig,
+  onBackendConfigChange,
   onBackendChange,
   globalVariables,
   metadataPairs,
@@ -207,6 +213,60 @@ export function StepConfiguration({
             </span>
           )}
         </div>
+
+        {backendType === "postgres" && (
+          <div className="flex flex-col gap-2 pt-4">
+            <Label
+              htmlFor="kb-postgres-collection"
+              className="text-sm font-medium"
+            >
+              Collection Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="kb-postgres-collection"
+              value={String(backendConfig.collection_name ?? "")}
+              disabled={isAddSourcesMode}
+              placeholder="langflow_knowledge"
+              onChange={(event) => {
+                onBackendConfigChange({
+                  ...backendConfig,
+                  collection_name: event.target.value,
+                });
+                onFieldChange?.();
+              }}
+            />
+            <span className="text-xs text-muted-foreground">
+              Each knowledge base can use a different pgvector collection.
+            </span>
+          </div>
+        )}
+
+        {backendType === "opensearch" && (
+          <div className="flex flex-col gap-2 pt-4">
+            <Label
+              htmlFor="kb-opensearch-index"
+              className="text-sm font-medium"
+            >
+              Index Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="kb-opensearch-index"
+              value={String(backendConfig.index_name ?? "")}
+              disabled={isAddSourcesMode}
+              placeholder="langflow_knowledge"
+              onChange={(event) => {
+                onBackendConfigChange({
+                  ...backendConfig,
+                  index_name: event.target.value,
+                });
+                onFieldChange?.();
+              }}
+            />
+            <span className="text-xs text-muted-foreground">
+              Each knowledge base can use a different OpenSearch index.
+            </span>
+          </div>
+        )}
 
         {/* Hidden file inputs */}
         <input

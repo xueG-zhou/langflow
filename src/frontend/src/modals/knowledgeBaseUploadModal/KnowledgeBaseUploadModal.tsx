@@ -70,6 +70,8 @@ export default function KnowledgeBaseUploadModal({
             columnConfig={form.columnConfig}
             onColumnConfigChange={form.setColumnConfig}
             backendType={form.backendType}
+            backendConfig={form.backendConfig}
+            onBackendConfigChange={form.setBackendConfig}
             onBackendChange={form.handleBackendProviderChange}
             globalVariables={form.globalVariables}
             metadataPairs={form.metadataPairs}

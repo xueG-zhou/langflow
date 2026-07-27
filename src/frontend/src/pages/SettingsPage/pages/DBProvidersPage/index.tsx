@@ -18,6 +18,7 @@ import {
   getActiveDBProvider,
   getGlobalVariableValue,
   OPENSEARCH_VARIABLES,
+  POSTGRES_VARIABLES,
   parseBooleanGlobalVariable,
   toAPIBackendType,
 } from "@/constants/dbProviderConstants";
@@ -489,6 +490,14 @@ function buildBackendConfigPayload(
       database_variable: CHROMA_CLOUD_VARIABLES.DATABASE,
       api_key_variable: CHROMA_CLOUD_VARIABLES.API_KEY,
       cloud_region: literalFields[CHROMA_CLOUD_VARIABLES.REGION] || "us-east-1",
+    };
+  }
+  if (providerId === "postgres") {
+    return {
+      connection_url_variable: POSTGRES_VARIABLES.CONNECTION_URL,
+      username_variable: POSTGRES_VARIABLES.USERNAME,
+      password_variable: POSTGRES_VARIABLES.PASSWORD,
+      collection_name: literalFields[POSTGRES_VARIABLES.COLLECTION_NAME] || "",
     };
   }
   if (providerId !== "opensearch") {
