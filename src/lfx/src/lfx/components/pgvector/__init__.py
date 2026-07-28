@@ -7,16 +7,24 @@ from .pgvector_write import PGVectorWriteComponent
 
 if TYPE_CHECKING:
     from .pgvector import PGVectorStoreComponent, PGVectorWriteComponent
+# lfx-bundles-shim
+"""Compatibility shim: lfx.components.pgvector moved to lfx-bundles.
 
 _dynamic_imports = {
     "PGVectorStoreComponent": "pgvector",
     "PGVectorWriteComponent": "pgvector_write",
 }
+This module re-points to the installed bundle distribution. It contains
+no component implementations and no third-party dependencies, and is
+removed once the deprecation window closes (M4).
+"""
 
 __all__ = [
     "PGVectorStoreComponent",
     "PGVectorWriteComponent",
 ]
+import importlib
+import sys
 
 
 def __getattr__(attr_name: str) -> Any:

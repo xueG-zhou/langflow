@@ -9,7 +9,7 @@ import uuid
 from dataclasses import dataclass
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from lfx.base.models.unified_models import (
     get_all_variables_for_provider,
@@ -20,6 +20,8 @@ from lfx.base.models.unified_models import (
 from lfx.log.logger import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from langflow.agentic.api.deps import require_agentic_experience
+from langflow.agentic.api.schemas import AssistantRequest
 from langflow.agentic.api.schemas import AssistantRequest, DescriptionGenerationRequest
 from langflow.agentic.services.assistant_service import (
     execute_flow_with_validation,
@@ -116,6 +118,11 @@ async def _resolve_assistant_context(
         "PROVIDER": provider,
     }
 
+    # Seeded here (not per-endpoint) so /assist and /execute/{flow_name}
+    # honor the budget the same way /assist/stream does.
+    if request.iterations_limit is not None:
+        global_vars["ITERATIONS_LIMIT"] = str(request.iterations_limit)
+
     # Inject all provider variables into the global context
     global_vars.update(provider_vars)
 
@@ -196,7 +203,7 @@ async def _build_description_input(request: DescriptionGenerationRequest, user_i
     )
 
 
-@router.post("/execute/{flow_name}")
+@router.post("/execute/{flow_name}", dependencies=[Depends(require_agentic_experience)])
 async def execute_named_flow(
     flow_name: str,
     request: AssistantRequest,
@@ -345,7 +352,7 @@ async def check_assistant_config(
     }
 
 
-@router.post("/assist")
+@router.post("/assist", dependencies=[Depends(require_agentic_experience)])
 async def assist(
     request: AssistantRequest,
     current_user: CurrentActiveUser,
@@ -370,7 +377,7 @@ async def assist(
     )
 
 
-@router.post("/assist/stream")
+@router.post("/assist/stream", dependencies=[Depends(require_agentic_experience)])
 async def assist_stream(
     request: AssistantRequest,
     http_request: Request,
@@ -393,6 +400,7 @@ async def assist_stream(
             model_name=ctx.model_name,
             api_key_var=ctx.api_key_name,
             is_disconnected=http_request.is_disconnected,
+            iterations_limit=request.iterations_limit,
         ),
         media_type="text/event-stream",
         headers={
