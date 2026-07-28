@@ -1,6 +1,5 @@
-import { act, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { useUtilityStore } from "@/stores/utilityStore";
 import TemplatesModal from "../index";
 
 const navProps: Array<Record<string, unknown>> = [];
@@ -63,22 +62,9 @@ jest.mock("@/components/ui/sidebar", () => ({
 describe("TemplatesModal", () => {
   beforeEach(() => {
     navProps.length = 0;
-    act(() => {
-      useUtilityStore.setState({ hideStarterProjects: false });
-    });
   });
 
-  afterEach(() => {
-    act(() => {
-      useUtilityStore.setState({ hideStarterProjects: false });
-    });
-  });
-
-  it("passes the effective tab to the nav when starter projects are hidden", () => {
-    act(() => {
-      useUtilityStore.setState({ hideStarterProjects: true });
-    });
-
+  it("only exposes visibility-based template views", () => {
     render(<TemplatesModal open setOpen={jest.fn()} />);
 
     expect(screen.getByTestId("templates-nav")).toBeInTheDocument();
@@ -93,13 +79,10 @@ describe("TemplatesModal", () => {
         category.items.map((item) => item.id),
       ) ?? [];
 
-    expect(categoryItemIds).not.toContain("get-started");
-  });
-
-  it("keeps get-started selected in the nav when starter projects are visible", () => {
-    render(<TemplatesModal open setOpen={jest.fn()} />);
-
-    expect(screen.getByTestId("templates-nav")).toBeInTheDocument();
-    expect(navProps.at(-1)?.currentTab).toBe("get-started");
+    expect(categoryItemIds).toEqual([
+      "all-templates",
+      "public-templates",
+      "my-templates",
+    ]);
   });
 });

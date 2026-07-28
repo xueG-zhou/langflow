@@ -4,8 +4,7 @@ export interface TeamTemplateSummary {
   id: string;
   name: string;
   description?: string | null;
-  category: string;
-  tags: string[];
+  visibility: "PUBLIC" | "PRIVATE";
   icon?: string | null;
   gradient?: string | null;
   source_flow_id?: string | null;
@@ -33,8 +32,12 @@ export interface CreateTeamTemplatePayload {
   source_flow_id: string;
   name: string;
   description?: string;
-  category: string;
-  tags: string[];
+  visibility: "PUBLIC" | "PRIVATE";
+}
+
+export interface UpdateTeamTemplatePayload {
+  id: string;
+  visibility: "PUBLIC" | "PRIVATE";
 }
 
 export interface NavItem {
@@ -69,13 +72,14 @@ export interface TemplateContentProps {
 export type TemplateExample = FlowType & {
   source?: "system" | "team";
   created_by?: string | null;
-  category?: string;
+  visibility?: "PUBLIC" | "PRIVATE";
 };
 
 export interface TemplateCardComponentProps {
   example: TemplateExample;
   onClick: () => void;
   onDelete?: () => void;
+  onVisibilityChange?: () => void;
 }
 
 export interface NavProps {

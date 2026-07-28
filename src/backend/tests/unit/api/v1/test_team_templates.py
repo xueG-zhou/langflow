@@ -40,8 +40,7 @@ async def test_team_template_crud_sanitizes_source_flow(client: AsyncClient, log
             "source_flow_id": str(flow.id),
             "name": "Safe team template",
             "description": "A shared template",
-            "category": "assistants",
-            "tags": ["team"],
+            "visibility": "PUBLIC",
         },
     )
     assert create_response.status_code == status.HTTP_201_CREATED
@@ -50,6 +49,7 @@ async def test_team_template_crud_sanitizes_source_flow(client: AsyncClient, log
     assert template["api_key"]["value"] == ""
     assert template["temperature"]["value"] == 0.2
     assert created["cleared_fields"] == 1
+    assert created["visibility"] == "PUBLIC"
 
     list_response = await client.get("api/v1/team-templates", headers=logged_in_headers)
     assert list_response.status_code == status.HTTP_200_OK

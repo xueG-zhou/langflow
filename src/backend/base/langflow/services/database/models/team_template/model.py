@@ -11,14 +11,17 @@ class TeamTemplateStatus(str, Enum):
     ARCHIVED = "ARCHIVED"
 
 
+class TeamTemplateVisibility(str, Enum):
+    PUBLIC = "PUBLIC"
+    PRIVATE = "PRIVATE"
+
+
 class TeamTemplate(SQLModel, table=True):  # type: ignore[call-arg]
     __tablename__ = "team_template"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     name: str = Field(index=True, max_length=100)
     description: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
-    category: str = Field(default="all-templates", index=True, max_length=64)
-    tags: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     icon: str | None = Field(default=None, nullable=True)
     gradient: str | None = Field(default=None, nullable=True)
     flow_data: dict = Field(sa_column=Column(JSON, nullable=False))
@@ -31,6 +34,7 @@ class TeamTemplate(SQLModel, table=True):  # type: ignore[call-arg]
         default=None,
         sa_column=Column(Uuid(), ForeignKey("user.id", ondelete="SET NULL"), nullable=True, index=True),
     )
+    visibility: str = Field(default=TeamTemplateVisibility.PRIVATE.value, index=True, max_length=16)
     status: str = Field(default=TeamTemplateStatus.ACTIVE.value, index=True, max_length=16)
     schema_version: int = Field(default=1, nullable=False)
     sanitizer_version: int = Field(default=1, nullable=False)
