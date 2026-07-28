@@ -2388,5 +2388,21 @@
   "textAnnotation.errors.export": "导出标注失败",
   "textAnnotation.errors.addTexts": "添加文本失败",
   "textAnnotation.errors.deleteTask": "删除文本失败",
-  "textAnnotation.errors.projectNotFound": "项目不存在"
+  "textAnnotation.errors.projectNotFound": "项目不存在",
+  "settings.nav.skills": "Skills 管理",
+  "settings.skills.title": "Skills 管理",
+  "settings.skills.description": "通过 ZIP 压缩包安装 Skill，并查看 Langflow 当前可用的 Skills。",
+  "settings.skills.uploadTitle": "上传 Skill",
+  "settings.skills.uploadFailed": "Skill 上传失败",
+  "settings.skills.zipOnly": "请选择包含一个 Skill 的 ZIP 压缩包。",
+  "settings.skills.tooLarge": "ZIP 压缩包不能超过 25 MB。",
+  "settings.skills.uploadSuccess": "{{name}} 安装成功",
+  "settings.skills.chooseZip": "选择 Skill ZIP 压缩包",
+  "settings.skills.installing": "正在安装 Skill…",
+  "settings.skills.dropZip": "将 Skill ZIP 拖到此处，或点击选择文件",
+  "settings.skills.requirements": "最大 25 MB，压缩包根目录必须包含 SKILL.md 文件。",
+  "settings.skills.installed": "已安装的 Skills",
+  "settings.skills.noDescription": "暂无描述。",
+  "settings.skills.empty": "尚未安装 Skill",
+  "settings.skills.uploadFirst": "上传第一个 Skill"
 }

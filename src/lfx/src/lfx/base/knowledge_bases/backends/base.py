@@ -110,6 +110,10 @@ class TestConnectionResult:
     details: dict[str, Any] = field(default_factory=dict)
 
 
+class NonRetryableBackendError(ValueError):
+    """A deterministic backend write failure that retries cannot resolve."""
+
+
 class BaseVectorStoreBackend(ABC):
     """Base class every KB vector-store backend inherits from.
 

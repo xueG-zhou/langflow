@@ -2388,5 +2388,21 @@
   "textAnnotation.errors.export": "Failed to export annotations",
   "textAnnotation.errors.addTexts": "Failed to add texts",
   "textAnnotation.errors.deleteTask": "Failed to delete text",
-  "textAnnotation.errors.projectNotFound": "Project not found"
+  "textAnnotation.errors.projectNotFound": "Project not found",
+  "settings.nav.skills": "Skills",
+  "settings.skills.title": "Skills",
+  "settings.skills.description": "Install Skills from ZIP archives and view the Skills available to Langflow.",
+  "settings.skills.uploadTitle": "Upload a Skill",
+  "settings.skills.uploadFailed": "Skill upload failed",
+  "settings.skills.zipOnly": "Select a ZIP archive containing one Skill.",
+  "settings.skills.tooLarge": "The ZIP archive must be 25 MB or smaller.",
+  "settings.skills.uploadSuccess": "{{name}} installed successfully",
+  "settings.skills.chooseZip": "Choose a Skill ZIP archive",
+  "settings.skills.installing": "Installing Skill…",
+  "settings.skills.dropZip": "Drop a Skill ZIP here, or click to browse",
+  "settings.skills.requirements": "Maximum 25 MB. The archive must contain a root SKILL.md file.",
+  "settings.skills.installed": "Installed Skills",
+  "settings.skills.noDescription": "No description provided.",
+  "settings.skills.empty": "No Skills installed yet",
+  "settings.skills.uploadFirst": "Upload your first Skill"
 }

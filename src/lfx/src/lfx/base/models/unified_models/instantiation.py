@@ -399,6 +399,17 @@ def get_embeddings(
     elif "model_id" in param_mapping:
         kwargs[param_mapping["model_id"]] = model_name
 
+    # OpenAIEmbeddings normally tokenizes long inputs client-side and sends
+    # integer token arrays to the embeddings endpoint. OpenAI-compatible
+    # bge-m3 servers generally accept only string inputs, so bypass that
+    # length-safe tokenization path and send the original chunk text.
+    normalized_model_name = str(model_name).strip().lower().replace("_", "-")
+    if embedding_class_name == "OpenAIEmbeddings" and normalized_model_name in {
+        "bge-m3",
+        "baai/bge-m3",
+    }:
+        kwargs["check_embedding_ctx_length"] = False
+
     # API key
     if "api_key" in param_mapping and api_key:
         kwargs[param_mapping["api_key"]] = api_key

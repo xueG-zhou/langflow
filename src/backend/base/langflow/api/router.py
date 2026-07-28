@@ -29,6 +29,7 @@ from langflow.api.v1 import (
     monitor_router,
     openai_responses_router,
     projects_router,
+    skills_router,
     starter_projects_router,
     store_router,
     team_templates_router,
@@ -79,6 +80,7 @@ router_v1.include_router(monitor_router)
 router_v1.include_router(traces_router)
 router_v1.include_router(folders_router)
 router_v1.include_router(projects_router)
+router_v1.include_router(skills_router)
 router_v1.include_router(starter_projects_router)
 router_v1.include_router(knowledge_bases_router)
 router_v1.include_router(memories_router)

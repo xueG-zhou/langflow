@@ -61,6 +61,16 @@ export default function SettingsPage(): JSX.Element {
       ),
     },
     {
+      title: t("settings.nav.skills", { defaultValue: "Skills" }),
+      href: "/settings/skills",
+      icon: (
+        <ForwardedIconComponent
+          name="PackageOpen"
+          className="w-4 flex-shrink-0 justify-start stroke-[1.5]"
+        />
+      ),
+    },
+    {
       title: t("settings.nav.globalVariables"),
       href: "/settings/global-variables",
       icon: (
