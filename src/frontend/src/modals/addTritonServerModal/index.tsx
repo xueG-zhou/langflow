@@ -8,7 +8,7 @@ import { usePatchTritonServer } from "@/controllers/API/queries/triton/use-patch
 import { usePostTritonServer } from "@/controllers/API/queries/triton/use-post-triton-server";
 import BaseModal from "@/modals/baseModal";
 import useAlertStore from "@/stores/alertStore";
-import type { TritonServerType } from "@/types/triton";
+import type { TritonServerType, TritonServerUpdateType } from "@/types/triton";
 
 type AddTritonServerModalProps = {
   open?: boolean;
@@ -34,6 +34,7 @@ export default function AddTritonServerModal({
 
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
+  const [rpcPort, setRpcPort] = useState("");
   const [authToken, setAuthToken] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -41,22 +42,31 @@ export default function AddTritonServerModal({
     if (open) {
       setName(initialData?.name ?? "");
       setBaseUrl(initialData?.base_url ?? "");
+      setRpcPort(
+        initialData?.rpc_port != null ? String(initialData.rpc_port) : "",
+      );
       setAuthToken("");
       setNotes(initialData?.notes ?? "");
     }
   }, [open, initialData]);
 
   const isPending = isAddPending || isPatchPending;
+  const rpcPortValid =
+    /^\d+$/.test(rpcPort.trim()) && Number(rpcPort.trim()) > 0;
   const canSubmit =
-    name.trim().length > 0 && baseUrl.trim().length > 0 && !isPending;
+    name.trim().length > 0 &&
+    baseUrl.trim().length > 0 &&
+    rpcPortValid &&
+    !isPending;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     try {
       if (isEdit && initialData) {
-        const payload: Record<string, string | null> = {
+        const payload: TritonServerUpdateType = {
           name: name.trim(),
           base_url: baseUrl.trim(),
+          rpc_port: Number(rpcPort.trim()),
         };
         if (notes.trim() !== (initialData.notes ?? "")) {
           payload.notes = notes.trim() === "" ? null : notes.trim();
@@ -71,6 +81,7 @@ export default function AddTritonServerModal({
         await addServer({
           name: name.trim(),
           base_url: baseUrl.trim(),
+          rpc_port: Number(rpcPort.trim()),
           auth_token: authToken.trim() === "" ? null : authToken.trim(),
           notes: notes.trim() === "" ? null : notes.trim(),
         });
@@ -132,6 +143,22 @@ export default function AddTritonServerModal({
             />
             <span className="text-xs text-muted-foreground">
               {t("triton.modal.urlHelp")}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="triton-rpc-port">
+              {t("triton.modal.rpcPortLabel")}
+            </Label>
+            <Input
+              id="triton-rpc-port"
+              inputMode="numeric"
+              value={rpcPort}
+              onChange={(e) => setRpcPort(e.target.value)}
+              placeholder={t("triton.modal.rpcPortPlaceholder")}
+              data-testid="triton-server-rpc-port-input"
+            />
+            <span className="text-xs text-muted-foreground">
+              {t("triton.modal.rpcPortHelp")}
             </span>
           </div>
           <div className="flex flex-col gap-2">

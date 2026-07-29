@@ -95,6 +95,7 @@ async def create_triton_server_route(
             user_id=current_user.id,
             name=payload.name,
             base_url=payload.base_url,
+            rpc_port=payload.rpc_port,
             auth_token=payload.auth_token,
             notes=payload.notes,
         )
@@ -148,6 +149,7 @@ async def update_triton_server_route(
             server=server,
             name=payload.name,
             base_url=payload.base_url,
+            rpc_port=payload.rpc_port,
             auth_token=payload.auth_token,
             notes=payload.notes,
         )

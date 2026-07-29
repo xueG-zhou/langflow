@@ -1,8 +1,10 @@
 """Utility functions for loop component execution."""
 
 from collections import deque
+from contextlib import aclosing
 from typing import TYPE_CHECKING
 
+from lfx.execution import get_default_coordinator
 from lfx.schema.data import Data
 
 if TYPE_CHECKING:
@@ -257,19 +259,17 @@ async def execute_loop_body(
                 start_vertex.update_raw_params({target_param: item}, overwrite=True)
 
             results = []
-            execution_context = {
-                "loop_id": effective_loop_id,
-                "iteration_index": iteration_index,
-                "iteration_count": iteration_count,
-            }
-            async for result in iteration_subgraph.async_start(
-                event_manager=event_manager,
-                execution_context=execution_context,
-            ):
-                results.append(result)
-                if hasattr(result, "valid") and not result.valid:
-                    msg = f"Error in loop iteration: {result}"
-                    raise RuntimeError(msg)
+            # aclosing guarantees the stream is finalized even when we raise mid-iteration
+            # on an invalid result, so the underlying subgraph generator's cleanup runs.
+            async with aclosing(
+                get_default_coordinator().stream(iteration_subgraph, event_manager=event_manager)
+            ) as stream:
+                async for result in stream:
+                    results.append(result)
+                    # Stop all on error (as per design decision)
+                    if hasattr(result, "valid") and not result.valid:
+                        msg = f"Error in loop iteration: {result}"
+                        raise RuntimeError(msg)
 
             output = extract_loop_output(results, end_vertex_id)
             if trace_result is not None:

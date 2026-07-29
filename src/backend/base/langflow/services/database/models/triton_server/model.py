@@ -13,6 +13,9 @@ from langflow.services.database.utils import normalize_string_or_none, validate_
 if TYPE_CHECKING:
     from langflow.services.database.models.user.model import User
 
+# Maximum valid TCP port number (RFC 793).
+_MAX_PORT = 65535
+
 
 class TritonServer(SQLModel, table=True):  # type: ignore[call-arg]
     __tablename__ = "triton_server"
@@ -30,6 +33,9 @@ class TritonServer(SQLModel, table=True):  # type: ignore[call-arg]
     )
     name: str = Field(description="User-chosen display name, unique per user (e.g. 'staging', 'prod').")
     base_url: str = Field(description="Triton server URL (scheme+host+port), e.g. http://triton:8000.")
+    rpc_port: int = Field(
+        description="Triton gRPC port (e.g. 8001). Combined with the base_url host to form the grpc_url.",
+    )
     # MUST be stored encrypted by the CRUD layer (auth_utils.encrypt_api_key);
     # the Read schema intentionally excludes this field. Use the dedicated
     # /credentials endpoint to obtain the decrypted value when needed.
@@ -51,6 +57,14 @@ class TritonServer(SQLModel, table=True):  # type: ignore[call-arg]
     def validate_non_empty(cls, v: str, info: object) -> str:
         return validate_non_empty_string(v, info)
 
+    @field_validator("rpc_port")
+    @classmethod
+    def validate_rpc_port(cls, v: int) -> int:
+        if v is None or v <= 0 or v > _MAX_PORT:
+            msg = f"rpc_port must be an integer in the range 1-{_MAX_PORT}"
+            raise ValueError(msg)
+        return v
+
     @field_validator("auth_token", "notes")
     @classmethod
     def normalize_optional(cls, v: str | None) -> str | None:
@@ -60,6 +74,7 @@ class TritonServer(SQLModel, table=True):  # type: ignore[call-arg]
 class TritonServerCreate(SQLModel):
     name: str
     base_url: str
+    rpc_port: int
     auth_token: str | None = None
     notes: str | None = None
 
@@ -69,6 +84,7 @@ class TritonServerRead(SQLModel):
     user_id: UUID
     name: str
     base_url: str
+    rpc_port: int
     notes: str | None = None
     has_auth_token: bool = False
     created_at: datetime
@@ -78,6 +94,7 @@ class TritonServerRead(SQLModel):
 class TritonServerUpdate(SQLModel):
     name: str | None = None
     base_url: str | None = None
+    rpc_port: int | None = None
     auth_token: str | None = None
     notes: str | None = None
 
