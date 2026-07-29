@@ -1,4 +1,4 @@
-import type { FlowType } from "../../flow";
+import type { FlowSummaryType, FlowType } from "../../flow";
 
 export type FlowsManagerStoreType = {
   autoSaving: boolean;
@@ -15,8 +15,8 @@ export type FlowsManagerStoreType = {
   undo: () => void;
   redo: () => void;
   takeSnapshot: () => void;
-  examples: Array<FlowType>;
-  setExamples: (examples: FlowType[]) => void;
+  examples: Array<FlowSummaryType>;
+  setExamples: (examples: FlowSummaryType[]) => void;
   setCurrentFlow: (flow?: FlowType) => void;
   setSearchFlowsComponents: (search: string) => void;
   searchFlowsComponents: string;

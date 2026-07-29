@@ -480,7 +480,11 @@ async def test_read_flows_header_mode_filtered_by_flow_type(client: AsyncClient,
     )
     agent_response = await client.post(
         "api/v1/flows/",
-        json={"name": "header_agent_flow", "data": {}, "flow_type": "agent"},
+        json={
+            "name": "header_agent_flow",
+            "data": {"nodes": [], "edges": []},
+            "flow_type": "agent",
+        },
         headers=logged_in_headers,
     )
     agent_id = agent_response.json()["id"]
@@ -495,6 +499,11 @@ async def test_read_flows_header_mode_filtered_by_flow_type(client: AsyncClient,
     returned_ids = {flow["id"] for flow in result}
     assert agent_id in returned_ids
     assert all(flow["flow_type"] == "agent" for flow in result)
+    assert all("data" not in flow for flow in result)
+
+    detail_response = await client.get(f"api/v1/flows/{agent_id}", headers=logged_in_headers)
+    assert detail_response.status_code == status.HTTP_200_OK
+    assert detail_response.json()["data"] == {"nodes": [], "edges": []}
 
 
 async def test_create_flows(client: AsyncClient, logged_in_headers):
@@ -568,6 +577,17 @@ async def test_read_basic_examples(client: AsyncClient, logged_in_headers):
     assert response.status_code == status.HTTP_200_OK
     assert isinstance(result, list), "The result must be a list"
     assert len(result) > 0, "The result must have at least one flow"
+    assert all("data" not in flow for flow in result)
+
+    detail_response = await client.get(f"api/v1/flows/basic_examples/{result[0]['id']}", headers=logged_in_headers)
+    assert detail_response.status_code == status.HTTP_200_OK
+    assert "data" in detail_response.json()
+
+
+async def test_read_basic_example_rejects_non_starter_flow(client: AsyncClient, logged_in_headers):
+    response = await client.get(f"api/v1/flows/basic_examples/{uuid.uuid4()}", headers=logged_in_headers)
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 async def test_read_flows_user_isolation(client: AsyncClient, logged_in_headers, active_user):

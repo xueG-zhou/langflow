@@ -7,7 +7,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 from sqlmodel import col, select
 
 from langflow.api.utils import CurrentActiveUser, DbSession
@@ -20,11 +20,10 @@ from langflow.api.v1.schemas.team_templates import (
     TeamTemplateUpdate,
 )
 from langflow.services.database.models.flow.model import Flow
-from langflow.services.database.models.team_template import TeamTemplate, TeamTemplateStatus
+from langflow.services.database.models.team_template import TeamTemplate, TeamTemplateStatus, TeamTemplateVisibility
 from langflow.services.team_templates import SANITIZER_VERSION, SanitizationReport, sanitize_flow_data
 
 router = APIRouter(prefix="/team-templates", tags=["Team Templates"])
-TEMPLATE_MANAGER_USERNAME = "langflow"
 
 
 def _summary(row: TeamTemplate) -> TeamTemplateSummary:
@@ -43,19 +42,19 @@ def _sanitize_or_422(flow_data: dict) -> tuple[dict, SanitizationReport]:
 
 
 def _ensure_template_admin(row: TeamTemplate, user) -> None:
-    if not user.is_superuser and row.created_by != user.id:
+    if row.created_by != user.id and not (user.is_superuser and row.visibility == TeamTemplateVisibility.PUBLIC.value):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the template creator may modify it")
 
 
 def _ensure_template_delete(row: TeamTemplate, user) -> None:
-    if user.username == TEMPLATE_MANAGER_USERNAME:
-        return
     _ensure_template_admin(row, user)
 
 
-async def _get_active_template(session: DbSession, template_id: UUID) -> TeamTemplate:
+async def _get_visible_template(session: DbSession, template_id: UUID, user) -> TeamTemplate:
     row = await session.get(TeamTemplate, template_id)
     if row is None or row.status != TeamTemplateStatus.ACTIVE.value:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+    if row.visibility == TeamTemplateVisibility.PRIVATE.value and row.created_by != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
     return row
 
@@ -87,8 +86,7 @@ async def create_team_template(
     row = TeamTemplate(
         name=payload.name,
         description=payload.description,
-        category=payload.category,
-        tags=payload.tags,
+        visibility=payload.visibility.value,
         icon=flow.icon,
         gradient=flow.gradient,
         flow_data=sanitized_data,
@@ -106,16 +104,28 @@ async def create_team_template(
 @router.get("", response_model=TeamTemplateList)
 @router.get("/", response_model=TeamTemplateList)
 async def list_team_templates(
-    _current_user: CurrentActiveUser,
+    current_user: CurrentActiveUser,
     session: DbSession,
     q: Annotated[str | None, Query(max_length=100)] = None,
-    category: Annotated[str | None, Query(max_length=64)] = None,
+    scope: Annotated[str, Query(pattern="^(all|public|mine)$")] = "all",
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> TeamTemplateList:
     base = select(TeamTemplate).where(TeamTemplate.status == TeamTemplateStatus.ACTIVE.value)
-    if category and category != "all-templates":
-        base = base.where(TeamTemplate.category == category)
+    if scope == "public":
+        base = base.where(TeamTemplate.visibility == TeamTemplateVisibility.PUBLIC.value)
+    elif scope == "mine":
+        base = base.where(TeamTemplate.created_by == current_user.id)
+    else:
+        base = base.where(
+            or_(
+                TeamTemplate.visibility == TeamTemplateVisibility.PUBLIC.value,
+                and_(
+                    TeamTemplate.visibility == TeamTemplateVisibility.PRIVATE.value,
+                    TeamTemplate.created_by == current_user.id,
+                ),
+            )
+        )
     if q:
         pattern = f"%{q.strip()}%"
         base = base.where(or_(col(TeamTemplate.name).ilike(pattern), col(TeamTemplate.description).ilike(pattern)))
@@ -133,10 +143,10 @@ async def list_team_templates(
 @router.get("/{template_id}", response_model=TeamTemplateRead)
 async def get_team_template(
     template_id: UUID,
-    _current_user: CurrentActiveUser,
+    current_user: CurrentActiveUser,
     session: DbSession,
 ) -> TeamTemplateRead:
-    return _read(await _get_active_template(session, template_id))
+    return _read(await _get_visible_template(session, template_id, current_user))
 
 
 @router.patch("/{template_id}", response_model=TeamTemplateRead)
@@ -146,14 +156,14 @@ async def update_team_template(
     current_user: CurrentActiveUser,
     session: DbSession,
 ) -> TeamTemplateRead:
-    row = await _get_active_template(session, template_id)
+    row = await _get_visible_template(session, template_id, current_user)
     _ensure_template_admin(row, current_user)
 
     changes = payload.model_dump(exclude_unset=True, exclude={"refresh_from_source"})
     for field_name, field_value in changes.items():
-        normalized_value = (
-            field_value.strip() if isinstance(field_value, str) and field_name in {"name", "category"} else field_value
-        )
+        normalized_value = field_value.strip() if isinstance(field_value, str) and field_name == "name" else field_value
+        if isinstance(normalized_value, TeamTemplateVisibility):
+            normalized_value = normalized_value.value
         setattr(row, field_name, normalized_value)
 
     if payload.refresh_from_source:
@@ -177,7 +187,7 @@ async def archive_team_template(
     current_user: CurrentActiveUser,
     session: DbSession,
 ) -> None:
-    row = await _get_active_template(session, template_id)
+    row = await _get_visible_template(session, template_id, current_user)
     _ensure_template_delete(row, current_user)
     row.status = TeamTemplateStatus.ARCHIVED.value
     row.updated_at = datetime.now(timezone.utc)

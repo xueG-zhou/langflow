@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 import emoji
 from emoji import purely_emoji
 from lfx.log.logger import logger
-from pydantic import BaseModel, ValidationInfo, field_serializer, field_validator
+from pydantic import BaseModel, field_serializer, field_validator
 from sqlalchemy import Boolean, Text, UniqueConstraint, false, text
 from sqlalchemy import Enum as SQLEnum
 from sqlmodel import JSON, Column, Field, Relationship, SQLModel
@@ -296,7 +296,7 @@ class FlowSummary(BaseModel):
 
 
 class FlowHeader(BaseModel):
-    """Model representing a header for a flow - Without the data."""
+    """Flow metadata used to select a flow without loading its graph JSON."""
 
     id: UUID = Field(description="Unique identifier for the flow")
     name: str = Field(description="The name of the flow")
@@ -307,7 +307,6 @@ class FlowHeader(BaseModel):
     is_component: bool | None = Field(None, description="Flag indicating whether the flow is a component")
     endpoint_name: str | None = Field(None, description="The name of the endpoint associated with this flow")
     description: str | None = Field(None, description="A description of the flow")
-    data: dict | None = Field(None, description="The data of the component, if is_component is True")
     access_type: AccessTypeEnum | None = Field(None, description="The access type of the flow")
     tags: list[str] | None = Field(None, description="The tags of the flow")
     mcp_enabled: bool | None = Field(None, description="Flag indicating whether the flow is exposed in the MCP server")
@@ -316,13 +315,6 @@ class FlowHeader(BaseModel):
     a2a_card_overrides: dict | None = Field(None, description="User overrides for the served A2A agent card")
     action_name: str | None = Field(None, description="The name of the action associated with the flow")
     action_description: str | None = Field(None, description="The description of the action associated with the flow")
-
-    @field_validator("data", mode="before")
-    @classmethod
-    def validate_flow_header(cls, value: dict, info: ValidationInfo):
-        if not info.data["is_component"]:
-            return None
-        return value
 
 
 class FlowUpdate(SQLModel):

@@ -1,7 +1,7 @@
 import { cloneDeep } from "lodash";
 import { create } from "zustand";
 import { SAVE_DEBOUNCE_TIME } from "@/constants/constants";
-import type { FlowType } from "../types/flow";
+import type { FlowSummaryType, FlowType } from "../types/flow";
 import type {
   FlowsManagerStoreType,
   UseUndoRedoOptions,
@@ -31,7 +31,7 @@ const useFlowsManagerStore = create<FlowsManagerStoreType>((set, get) => ({
   setAutoSavingInterval: (autoSavingInterval: number) =>
     set({ autoSavingInterval }),
   examples: [],
-  setExamples: (examples: FlowType[]) => {
+  setExamples: (examples: FlowSummaryType[]) => {
     set({ examples });
   },
   currentFlowId: "",

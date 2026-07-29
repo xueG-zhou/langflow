@@ -16,6 +16,7 @@ export default function SettingsPage(): JSX.Element {
   const { t } = useTranslation();
   const autoLogin = useAuthStore((state) => state.autoLogin);
   const hasStore = useStoreStore((state) => state.hasStore);
+  const isAdmin = useAuthStore((state) => state.isAdmin);
 
   // Hides the General settings if there is nothing to show
   const showGeneralSettings = ENABLE_PROFILE_ICONS || hasStore || !autoLogin;
@@ -56,6 +57,16 @@ export default function SettingsPage(): JSX.Element {
       icon: (
         <ForwardedIconComponent
           name="Terminal"
+          className="w-4 flex-shrink-0 justify-start stroke-[1.5]"
+        />
+      ),
+    },
+    {
+      title: t("settings.nav.skills", { defaultValue: "Skills" }),
+      href: "/settings/skills",
+      icon: (
+        <ForwardedIconComponent
+          name="PackageOpen"
           className="w-4 flex-shrink-0 justify-start stroke-[1.5]"
         />
       ),
@@ -122,6 +133,19 @@ export default function SettingsPage(): JSX.Element {
       ),
     },
   );
+
+  if (isAdmin) {
+    sidebarNavItems.splice(3, 0, {
+      title: t("settings.nav.components"),
+      href: "/settings/components",
+      icon: (
+        <ForwardedIconComponent
+          name="Blocks"
+          className="w-4 flex-shrink-0 justify-start stroke-[1.5]"
+        />
+      ),
+    });
+  }
 
   // TODO: Remove this on cleanup
   if (!ENABLE_DATASTAX_LANGFLOW) {

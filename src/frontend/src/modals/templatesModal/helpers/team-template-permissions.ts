@@ -1,7 +1,5 @@
 import type { TemplateExample } from "@/types/templates/types";
 
-const TEMPLATE_MANAGER_USERNAME = "langflow";
-
 interface TemplateUser {
   id?: string;
   username?: string;
@@ -15,7 +13,6 @@ export function canDeleteTeamTemplate(
   return (
     template.source === "team" &&
     (template.created_by === user?.id ||
-      user?.is_superuser === true ||
-      user?.username === TEMPLATE_MANAGER_USERNAME)
+      (template.visibility === "PUBLIC" && user?.is_superuser === true))
   );
 }

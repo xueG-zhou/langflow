@@ -236,6 +236,9 @@ async def _run_master_preload() -> None:
         _STATE.temp_dirs = list(temp_dirs)
         _STATE.bundles_components_paths = list(bundles_components_paths)
         settings_service.settings.components_path.extend(bundles_components_paths)
+        from langflow.services.managed_components import ensure_managed_components_path
+
+        ensure_managed_components_path(settings_service)
         mark_step_complete(PreloadStep.BUNDLES)
 
         await logger.ainfo("[preload] building component types cache")

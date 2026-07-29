@@ -28,8 +28,7 @@ export default function SaveTeamTemplateModal({
   const setErrorData = useAlertStore((state) => state.setErrorData);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("assistants");
-  const [tags, setTags] = useState("");
+  const [visibility, setVisibility] = useState<"PUBLIC" | "PRIVATE">("PRIVATE");
   const [saving, setSaving] = useState(false);
   const initializedFlowId = useRef<string | null>(null);
 
@@ -41,13 +40,19 @@ export default function SaveTeamTemplateModal({
     if (currentFlow?.id && initializedFlowId.current !== currentFlow.id) {
       setName(currentFlow?.name ?? "");
       setDescription(currentFlow?.description ?? "");
-      setTags(currentFlow?.tags?.join(", ") ?? "");
+      setVisibility("PRIVATE");
       initializedFlowId.current = currentFlow.id;
     }
   }, [open, currentFlow]);
 
   const handleSubmit = async () => {
     if (!currentFlow?.id || !name.trim()) return;
+    if (
+      visibility === "PUBLIC" &&
+      !window.confirm(t("teamTemplates.publishConfirmation"))
+    ) {
+      return;
+    }
     setSaving(true);
     try {
       await saveFlow();
@@ -55,12 +60,7 @@ export default function SaveTeamTemplateModal({
         source_flow_id: currentFlow.id,
         name: name.trim(),
         description: description.trim() || undefined,
-        category,
-        tags: tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean)
-          .slice(0, 10),
+        visibility,
       });
       setSuccessData({
         title: t("teamTemplates.saved", {
@@ -121,41 +121,25 @@ export default function SaveTeamTemplateModal({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="team-template-category">
-              {t("teamTemplates.category")}
+            <Label htmlFor="team-template-visibility">
+              {t("teamTemplates.visibility")}
             </Label>
             <select
-              id="team-template-category"
+              id="team-template-visibility"
               className="h-10 rounded-md border bg-background px-3 text-sm"
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
+              value={visibility}
+              onChange={(event) =>
+                setVisibility(event.target.value as "PUBLIC" | "PRIVATE")
+              }
             >
-              <option value="assistants">
-                {t("templatesModal.assistants")}
-              </option>
-              <option value="classification">
-                {t("templatesModal.classification")}
-              </option>
-              <option value="coding">{t("templatesModal.coding")}</option>
-              <option value="content-generation">
-                {t("templatesModal.contentGeneration")}
-              </option>
-              <option value="q-a">{t("templatesModal.qa")}</option>
-              <option value="chatbots">{t("templatesModal.prompting")}</option>
-              <option value="rag">{t("templatesModal.rag")}</option>
-              <option value="agents">{t("templatesModal.agents")}</option>
+              <option value="PRIVATE">{t("teamTemplates.private")}</option>
+              <option value="PUBLIC">{t("teamTemplates.public")}</option>
             </select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="team-template-tags">
-              {t("teamTemplates.tags")}
-            </Label>
-            <Input
-              id="team-template-tags"
-              value={tags}
-              onChange={(event) => setTags(event.target.value)}
-              placeholder={t("teamTemplates.tagsPlaceholder")}
-            />
+            <p className="text-xs text-muted-foreground">
+              {visibility === "PUBLIC"
+                ? t("teamTemplates.publicDescription")
+                : t("teamTemplates.privateDescription")}
+            </p>
           </div>
         </div>
       </BaseModal.Content>

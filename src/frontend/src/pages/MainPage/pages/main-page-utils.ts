@@ -1,9 +1,9 @@
-import type { FlowType } from "@/types/flow";
+import type { FlowSummaryType, FlowType } from "@/types/flow";
 import type { FolderType } from "../entities";
 
 export function shouldShowMainContent(
   flows: FlowType[] | undefined,
-  examples: FlowType[] | undefined,
+  examples: FlowSummaryType[] | undefined,
   folders: FolderType[] | undefined,
 ): boolean {
   if (!flows || !examples || !folders) return false;

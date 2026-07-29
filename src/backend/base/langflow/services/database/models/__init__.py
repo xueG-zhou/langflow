@@ -24,6 +24,7 @@ from .ingestion_run import IngestionRun, IngestionRunStatus
 from .jobs import ExecutionSignal, Job, JobCheckpoint, JobEvent, SignalType
 from .knowledge_base import KnowledgeBaseRecord, KnowledgeBaseStatus
 from .mcp_server import MCPServer
+from .managed_component import ManagedComponentBundle, ManagedComponentStatus
 from .memory_base import MemoryBase, MemoryBaseSession, MemoryBaseWorkflowRun, MessageIngestionRecord
 from .message import MessageTable
 from .team_template import TeamTemplate, TeamTemplateStatus
@@ -64,6 +65,8 @@ __all__ = [
     "KnowledgeBaseRecord",
     "KnowledgeBaseStatus",
     "MCPServer",
+    "ManagedComponentBundle",
+    "ManagedComponentStatus",
     "MemoryBase",
     "MemoryBaseSession",
     "MemoryBaseWorkflowRun",

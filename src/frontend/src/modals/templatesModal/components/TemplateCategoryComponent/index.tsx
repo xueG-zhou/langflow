@@ -4,6 +4,9 @@ import TemplateExampleCard from "../TemplateCardComponent";
 interface TemplateCategoryComponentProps extends TemplateCategoryProps {
   loading: boolean;
   onDelete?: (example: TemplateCategoryProps["examples"][number]) => void;
+  onVisibilityChange?: (
+    example: TemplateCategoryProps["examples"][number],
+  ) => void;
   canDelete?: (example: TemplateCategoryProps["examples"][number]) => boolean;
 }
 
@@ -11,6 +14,7 @@ export function TemplateCategoryComponent({
   examples,
   onCardClick,
   onDelete,
+  onVisibilityChange,
   canDelete,
   loading,
 }: TemplateCategoryComponentProps) {
@@ -25,6 +29,11 @@ export function TemplateCategoryComponent({
             onDelete={
               onDelete && canDelete?.(example)
                 ? () => onDelete(example)
+                : undefined
+            }
+            onVisibilityChange={
+              onVisibilityChange && canDelete?.(example)
+                ? () => onVisibilityChange(example)
                 : undefined
             }
             disabled={loading}

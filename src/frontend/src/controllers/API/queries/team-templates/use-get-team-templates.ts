@@ -7,7 +7,7 @@ import { UseRequestProcessor } from "../../services/request-processor";
 interface TeamTemplateListParams {
   page?: number;
   page_size?: number;
-  category?: string;
+  scope?: "all" | "public" | "mine";
   q?: string;
 }
 

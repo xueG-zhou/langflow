@@ -319,6 +319,9 @@ def get_lifespan(*, fix_migration=False, version=None):
             # @official-slot pathway alongside installed extensions, so they
             # share the BundleRegistry, palette decoration, and reload
             # endpoint with pip-installed bundles.  Nothing to wire here.
+            from langflow.services.managed_components import ensure_managed_components_path
+
+            ensure_managed_components_path(get_settings_service())
 
             # Gate: Cache component types
             # When types_cached is True, workers inherited the populated cache via COW; we still need a

@@ -739,13 +739,31 @@ class TestTopologicalSortSpans:
         assert uuids.index(root) < uuids.index(mid) < uuids.index(leaf)
 
     def test_parent_outside_batch(self):
-        """Spans referencing a parent not in the batch are treated as roots."""
+        """Spans referencing a missing parent become valid root spans."""
         external_parent = uuid4()
         child_id = uuid4()
         items = [self._make_span(child_id, external_parent)]
         result = topological_sort_spans(items)
         assert len(result) == 1
         assert result[0][1] == child_id
+        assert result[0][2] is None
+
+    def test_missing_loop_parent_preserves_iteration_children(self):
+        """A missing Loop span must not orphan its iteration subtree."""
+        missing_loop = uuid4()
+        iteration = uuid4()
+        component = uuid4()
+        items = [
+            self._make_span(component, iteration),
+            self._make_span(iteration, missing_loop),
+        ]
+
+        result = topological_sort_spans(items)
+
+        assert [(item[1], item[2]) for item in result] == [
+            (iteration, None),
+            (component, iteration),
+        ]
 
     def test_mixed_roots_and_children(self):
         root_a = uuid4()

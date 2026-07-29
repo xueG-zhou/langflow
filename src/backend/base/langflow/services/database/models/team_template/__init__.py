@@ -1,3 +1,3 @@
-from .model import TeamTemplate, TeamTemplateStatus
+from .model import TeamTemplate, TeamTemplateStatus, TeamTemplateVisibility
 
-__all__ = ["TeamTemplate", "TeamTemplateStatus"]
+__all__ = ["TeamTemplate", "TeamTemplateStatus", "TeamTemplateVisibility"]
