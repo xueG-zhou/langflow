@@ -49,9 +49,6 @@ export function SpanTree({
     handleTreeKeyDown,
     registerNodeRef,
   } = useSpanTree({ spans, selectedSpanId });
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() =>
-    getInitiallyExpandedIds(spans),
-  );
 
   const renderSpan = useCallback(
     (span: Span, depth: number, posInSet: number, setSize: number) => {

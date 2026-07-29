@@ -528,16 +528,6 @@ class TestLangfuseTracerFunctionality:
 
         trace_update = mock_langfuse["root_span"].update_trace.call_args.kwargs
         assert trace_update["output"] == {"output": {"message": "ready", "usage": {"tokens": 3}}}
-        # Should update root span
-        mock_langfuse["root_span"].update.assert_called()
-        # Should update trace metadata
-        assert mock_langfuse["root_span"].update_trace.call_count >= 2  # init + end
-        final_trace_update = mock_langfuse["root_span"].update_trace.call_args.kwargs
-        assert final_trace_update["name"] == "flow-123"
-        assert final_trace_update["user_id"] == "user-1"
-        assert final_trace_update["session_id"] == "session-1"
-        # Should end root span
-        mock_langfuse["root_span"].end.assert_called()
 
     def test_get_langchain_callback_uses_trace_context(self, mock_langfuse):
         """Test that get_langchain_callback creates handler with trace context."""

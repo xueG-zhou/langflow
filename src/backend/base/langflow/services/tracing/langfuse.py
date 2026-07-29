@@ -553,7 +553,6 @@ class LangFuseTracer(BaseTracer):
         self._root_span.update_trace(
             input={"input": trace_input},
             output={"output": trace_output},
-            metadata=metadata_ser,
             name=self.flow_id,
             user_id=self.user_id,
             session_id=self.session_id,

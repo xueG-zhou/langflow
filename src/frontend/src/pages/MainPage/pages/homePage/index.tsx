@@ -346,7 +346,7 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
                       data &&
                       data.pagination.total > 0 ? (
                       view === "grid" ? (
-                        <div className="mt-4 grid grid-cols-1 gap-1 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="mt-4 grid grid-cols-2 gap-1 md:grid-cols-4 lg:grid-cols-6">
                           {data.flows.map((flow, index) => (
                             <ListComponent
                               key={flow.id}
@@ -356,6 +356,7 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
                                 setSelectedFlow(selected, flow.id, index)
                               }
                               shiftPressed={isShiftPressed || isCtrlPressed}
+                              view={view}
                             />
                           ))}
                         </div>
@@ -370,6 +371,7 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
                                 setSelectedFlow(selected, flow.id, index)
                               }
                               shiftPressed={isShiftPressed || isCtrlPressed}
+                              view={view}
                             />
                           ))}
                         </div>
@@ -383,84 +385,6 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
                 )}
               </div>
             </PermissionsProvider>
-            <div className="flex h-full flex-col justify-start">
-              <HeaderComponent
-                folderName={folderName}
-                flowType={flowType}
-                setFlowType={setFlowType}
-                view={view}
-                setView={setView}
-                setNewProjectModal={setNewProjectModal}
-                onNewFlow={startNewFlow}
-                setSearch={onSearch}
-                isEmptyFolder={isEmptyFolder === true}
-                selectedFlows={selectedFlows}
-              />
-              {isEmptyFolder === true ? (
-                <EmptyFolder
-                  setOpenModal={setNewProjectModal}
-                  onNewFlow={startNewFlow}
-                />
-              ) : (
-                <div className="flex h-full flex-col">
-                  {isLoading || isEmptyFolder === null ? (
-                    view === "grid" ? (
-                      <div className="mt-4 grid grid-cols-1 gap-1 md:grid-cols-2 lg:grid-cols-3">
-                        <ListSkeleton />
-                        <ListSkeleton />
-                      </div>
-                    ) : (
-                      <div className="mt-4 flex flex-col gap-1">
-                        <ListSkeleton />
-                        <ListSkeleton />
-                      </div>
-                    )
-                  ) : flowType === "mcp" ? (
-                    <CustomMcpServerTab folderName={folderName} />
-                  ) : flowType === "deployments" ? (
-                    <DeploymentsPage />
-                  ) : (flowType === "flows" || flowType === "components") &&
-                    data &&
-                    data.pagination.total > 0 ? (
-                    view === "grid" ? (
-                      <div className="mt-4 grid grid-cols-2 gap-1 md:grid-cols-4 lg:grid-cols-6">
-                        {data.flows.map((flow, index) => (
-                          <ListComponent
-                            key={flow.id}
-                            flowData={flow}
-                            selected={selectedFlows.includes(flow.id)}
-                            setSelected={(selected) =>
-                              setSelectedFlow(selected, flow.id, index)
-                            }
-                            shiftPressed={isShiftPressed || isCtrlPressed}
-                            view={view}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="mt-4 flex flex-col gap-1">
-                        {data.flows.map((flow, index) => (
-                          <ListComponent
-                            key={flow.id}
-                            flowData={flow}
-                            selected={selectedFlows.includes(flow.id)}
-                            setSelected={(selected) =>
-                              setSelectedFlow(selected, flow.id, index)
-                            }
-                            shiftPressed={isShiftPressed || isCtrlPressed}
-                            view={view}
-                          />
-                        ))}
-                      </div>
-                    )
-                  ) : (
-                    <div className="pt-24 text-center text-sm text-secondary-foreground">
-                      {t("home.flowTypeNotSupported", { flowType })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
           {(flowType === "flows" || flowType === "components") &&
             !isLoading &&

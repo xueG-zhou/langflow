@@ -21,7 +21,6 @@ from lfx.log.logger import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from langflow.agentic.api.deps import require_agentic_experience
-from langflow.agentic.api.schemas import AssistantRequest
 from langflow.agentic.api.schemas import AssistantRequest, DescriptionGenerationRequest
 from langflow.agentic.services.assistant_service import (
     execute_flow_with_validation,

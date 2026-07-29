@@ -383,7 +383,6 @@ class TestLoopComponentSubgraphExecution:
         event_manager_received = []
 
         # Create an async generator that yields mock results
-        async def mock_async_start(event_manager=None, **_kwargs):
         async def mock_async_start(event_manager=None, execution_context=None):
             _ = execution_context
             event_manager_received.append(event_manager)

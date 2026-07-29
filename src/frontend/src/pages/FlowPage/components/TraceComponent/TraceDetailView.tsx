@@ -356,7 +356,6 @@ export function TraceDetailView({
           <SpanTree
             spans={displayedSpans}
             key={trace.id}
-            spans={treeSpans}
             selectedSpanId={selectedSpan?.id ?? null}
             onSelectSpan={handleSelectSpan}
           />

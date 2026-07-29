@@ -1,3 +1,5 @@
+from .a2a import A2ACheckpoint, A2ATask
+from .annotation import AnnotationImage, AnnotationProject
 from .api_key import ApiKey
 from .auth import (
     AuthzAuditLog,

@@ -2507,7 +2507,7 @@
   "textAnnotation.errors.export": "Failed to export annotations",
   "textAnnotation.errors.addTexts": "Failed to add texts",
   "textAnnotation.errors.deleteTask": "Failed to delete text",
-  "textAnnotation.errors.projectNotFound": "Project not found"
+  "textAnnotation.errors.projectNotFound": "Project not found",
   "humanInput.required": "Human input required",
   "humanInput.runFailed": "Workflow run failed",
   "humanInput.waitingForInput": "Waiting for Human Input",

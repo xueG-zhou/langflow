@@ -3,24 +3,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from lfx.components._importing import import_mod
-from .pgvector_write import PGVectorWriteComponent
 
 if TYPE_CHECKING:
-    from .pgvector import PGVectorStoreComponent, PGVectorWriteComponent
+    from lfx.components.triton.triton_bert_classifier import TritonBertClassifierComponent
 
 _dynamic_imports = {
-    "PGVectorStoreComponent": "pgvector",
-    "PGVectorWriteComponent": "pgvector_write",
+    "TritonBertClassifierComponent": "triton_bert_classifier",
 }
 
 __all__ = [
-    "PGVectorStoreComponent",
-    "PGVectorWriteComponent",
+    "TritonBertClassifierComponent",
 ]
 
 
 def __getattr__(attr_name: str) -> Any:
-    """Lazily import pgvector components on attribute access."""
+    """Lazily import triton components on attribute access."""
     if attr_name not in _dynamic_imports:
         msg = f"module '{__name__}' has no attribute '{attr_name}'"
         raise AttributeError(msg)

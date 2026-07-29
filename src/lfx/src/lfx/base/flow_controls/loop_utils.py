@@ -270,19 +270,6 @@ async def execute_loop_body(
                     if hasattr(result, "valid") and not result.valid:
                         msg = f"Error in loop iteration: {result}"
                         raise RuntimeError(msg)
-            execution_context = {
-                "loop_id": effective_loop_id,
-                "iteration_index": iteration_index,
-                "iteration_count": iteration_count,
-            }
-            async for result in iteration_subgraph.async_start(
-                event_manager=event_manager,
-                execution_context=execution_context,
-            ):
-                results.append(result)
-                if hasattr(result, "valid") and not result.valid:
-                    msg = f"Error in loop iteration: {result}"
-                    raise RuntimeError(msg)
 
             output = extract_loop_output(results, end_vertex_id)
             if trace_result is not None:

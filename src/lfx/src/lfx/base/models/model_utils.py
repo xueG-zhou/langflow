@@ -563,31 +563,18 @@ def fetch_live_openai_compatible_models(user_id: UUID | str | None, model_type: 
         if not isinstance(entries, list):
             return []
 
-    return [
-        create_model_metadata(
-            provider="OpenAI",
-            name=entry["id"],
-            icon="OpenAI",
-            model_type=model_type,
-            tool_calling=model_type == "llm",
-            default=index < MIN_DEFAULT_MODELS,
-        )
-        for index, entry in enumerate(entries)
-        if isinstance(entry, dict) and entry.get("id")
-    ]
-        # return [
-        #     create_model_metadata(
-        #         provider="OpenAI",
-        #         name=entry["id"],
-        #         icon="OpenAI",
-        #         model_type="llm",
-        #         tool_calling=True,
-        #         default=index < MIN_DEFAULT_MODELS,
-        #     )
-        #     for index, entry in enumerate(entries)
-        #     if isinstance(entry, dict) and entry.get("id")
-        # ]
-
+        return [
+            create_model_metadata(
+                provider="OpenAI",
+                name=entry["id"],
+                icon="OpenAI",
+                model_type=model_type,
+                tool_calling=model_type == "llm",
+                default=index < MIN_DEFAULT_MODELS,
+            )
+            for index, entry in enumerate(entries)
+            if isinstance(entry, dict) and entry.get("id")
+        ]
 
     else:
         try:
