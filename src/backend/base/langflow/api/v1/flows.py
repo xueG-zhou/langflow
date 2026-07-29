@@ -14,11 +14,13 @@ from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlmodel import apaginate
 from lfx.services.cache.utils import CACHE_MISS
 from pydantic import ValidationError
+from sqlalchemy.orm import defer
 from sqlmodel import and_, col, select
 
 from langflow.api.utils import (
     CurrentActiveUser,
     DbSession,
+    DbSessionReadOnly,
     cascade_delete_flow,
     normalize_code_for_import,
     validate_is_component,
@@ -65,6 +67,7 @@ from langflow.services.database.models.flow.model import (
     FlowCreate,
     FlowHeader,
     FlowRead,
+    FlowSummary,
     FlowType,
     FlowUpdate,
 )
@@ -125,7 +128,7 @@ async def create_flow(
 async def read_flows(
     *,
     current_user: CurrentActiveUser,
-    session: DbSession,
+    session: DbSessionReadOnly,
     remove_example_flows: bool = False,
     components_only: bool = False,
     get_all: bool = True,
@@ -173,12 +176,18 @@ async def read_flows(
         # in-memory filter below. OSS pass-through returns None → the query stays
         # owner-scoped and ``filter_visible_resources`` runs unchanged.
         visible_flow_ids = await visible_id_prefilter(current_user, resource_type="flow", act=FlowAction.READ)
+        base_stmt = select(Flow)
+        if header_flows:
+            # Header lists are used to choose a flow. The graph JSON is loaded
+            # separately by GET /flows/{id} only after a flow is opened.
+            base_stmt = base_stmt.options(defer(Flow.data))
+
         if visible_flow_ids is not None:
             stmt = restrict_to_owned_or_visible(
-                select(Flow), id_column=Flow.id, owner_clause=owned_clause, visible_ids=visible_flow_ids
+                base_stmt, id_column=Flow.id, owner_clause=owned_clause, visible_ids=visible_flow_ids
             )
         else:
-            stmt = select(Flow).where(fallback_clause)
+            stmt = base_stmt.where(fallback_clause)
 
         if remove_example_flows:
             stmt = stmt.where(Flow.folder_id != starter_folder_id)
@@ -191,9 +200,12 @@ async def read_flows(
 
         if get_all:
             flows = (await session.exec(stmt)).all()
-            flows = validate_is_component(flows)
-            if components_only:
-                flows = [flow for flow in flows if flow.is_component]
+            if not header_flows:
+                # Legacy rows may need their component flag inferred from the
+                # graph JSON. Header mode deliberately avoids touching JSON.
+                flows = validate_is_component(flows)
+                if components_only:
+                    flows = [flow for flow in flows if flow.is_component]
             if remove_example_flows and starter_folder_id:
                 flows = [flow for flow in flows if flow.folder_id != starter_folder_id]
             # When no DB prefilter is available (OSS pass-through), drop denied
@@ -803,55 +815,60 @@ async def download_multiple_file(
 
 # 5 minutes
 _STARTER_FLOWS_TTL_SECONDS: float = 300.0
-_starter_flows_cache: ThreadingInMemoryCache[threading.RLock] = ThreadingInMemoryCache(
+_starter_flow_summaries_cache: ThreadingInMemoryCache[threading.RLock] = ThreadingInMemoryCache(
     max_size=1,
     expiration_time=int(_STARTER_FLOWS_TTL_SECONDS),
 )
-_starter_flows_translated_cache: ThreadingInMemoryCache[threading.RLock] = ThreadingInMemoryCache(
+_starter_flow_summaries_translated_cache: ThreadingInMemoryCache[threading.RLock] = ThreadingInMemoryCache(
     max_size=16,  # Why: 16 > 7 current supported locales, leaves headroom for future additions
     expiration_time=int(_STARTER_FLOWS_TTL_SECONDS),
 )
 _starter_flows_lock = asyncio.Lock()
 
 
-@router.get("/basic_examples/", response_model=list[FlowRead], status_code=200)
+@router.get("/basic_examples/", response_model=list[FlowSummary], status_code=200)
 async def read_basic_examples(
     *,
-    session: DbSession,
+    session: DbSessionReadOnly,
     request: Request,
 ):
-    """Retrieve a list of basic example flows."""
+    """Retrieve starter-flow metadata without loading graph JSON."""
     locale = getattr(request.state, "locale", "en")
-    translated_cache_key = f"starter_flows_{locale}"
+    translated_cache_key = f"starter_flow_summaries_{locale}"
 
     # Fast path: translated result already cached for this locale
-    cached_translated = _starter_flows_translated_cache.get(translated_cache_key)
+    cached_translated = _starter_flow_summaries_translated_cache.get(translated_cache_key)
     if cached_translated is not CACHE_MISS:
         return compress_response(cached_translated)
 
     async with _starter_flows_lock:
         # Double-check inside lock to prevent thundering herd
-        cached_translated = _starter_flows_translated_cache.get(translated_cache_key)
+        cached_translated = _starter_flow_summaries_translated_cache.get(translated_cache_key)
         if cached_translated is not CACHE_MISS:
             return compress_response(cached_translated)
 
-        # Ensure raw DB data is cached
-        cached_flow_reads = _starter_flows_cache.get("starter_flows")
-        if cached_flow_reads is CACHE_MISS:
+        cached_summaries = _starter_flow_summaries_cache.get("starter_flow_summaries")
+        if cached_summaries is CACHE_MISS:
             try:
-                starter_folder = (await session.exec(select(Folder).where(Folder.name == STARTER_FOLDER_NAME))).first()
+                starter_folder = (
+                    await session.exec(
+                        select(Folder).where(Folder.name == STARTER_FOLDER_NAME, Folder.user_id == None)  # noqa: E711
+                    )
+                ).first()
 
                 if not starter_folder:
                     return compress_response([])
 
                 all_starter_folder_flows = (
-                    await session.exec(select(Flow).where(Flow.folder_id == starter_folder.id))
+                    await session.exec(
+                        select(Flow).options(defer(Flow.data)).where(Flow.folder_id == starter_folder.id)
+                    )
                 ).all()
 
-                cached_flow_reads = [
-                    FlowRead.model_validate(flow, from_attributes=True) for flow in all_starter_folder_flows
+                cached_summaries = [
+                    FlowSummary.model_validate(flow, from_attributes=True) for flow in all_starter_folder_flows
                 ]
-                _starter_flows_cache.set("starter_flows", cached_flow_reads)
+                _starter_flow_summaries_cache.set("starter_flow_summaries", cached_summaries)
 
             except Exception as e:
                 import logging as _logging
@@ -859,23 +876,39 @@ async def read_basic_examples(
                 _logging.getLogger(__name__).exception("Error loading basic examples")
                 raise HTTPException(status_code=500, detail="An internal error occurred while loading examples.") from e
 
-        # Translate once per locale and cache the result
-        # Why: cached uncompressed so the same result can be re-compressed per
-        # response — keeps locale-switching working without storing per-locale
-        # compressed blobs.
-        translated = translate_starter_flows(cached_flow_reads, locale)
-        result = []
-        for flow in translated:
-            flow_copy = flow.model_copy()
-            if flow_copy.data and isinstance(flow_copy.data, dict):
-                nodes = flow_copy.data.get("nodes", [])
-                translated_nodes = translate_flow_notes(nodes, locale)
-                flow_copy.data = {**flow_copy.data, "nodes": translated_nodes}
-            result.append(flow_copy)
-
-        _starter_flows_translated_cache.set(translated_cache_key, result)
+        result = translate_starter_flows(cached_summaries, locale)
+        _starter_flow_summaries_translated_cache.set(translated_cache_key, result)
 
     return compress_response(result)
+
+
+@router.get("/basic_examples/{flow_id}", response_model=FlowRead, status_code=200)
+async def read_basic_example(
+    *,
+    flow_id: UUID,
+    session: DbSessionReadOnly,
+    request: Request,
+):
+    """Retrieve one starter flow with its graph JSON."""
+    starter_folder = (
+        await session.exec(select(Folder).where(Folder.name == STARTER_FOLDER_NAME, Folder.user_id == None))  # noqa: E711
+    ).first()
+    if not starter_folder:
+        raise HTTPException(status_code=404, detail="Starter flow not found.")
+
+    flow = (
+        await session.exec(select(Flow).where(Flow.id == flow_id, Flow.folder_id == starter_folder.id))
+    ).one_or_none()
+    if flow is None:
+        raise HTTPException(status_code=404, detail="Starter flow not found.")
+
+    locale = getattr(request.state, "locale", "en")
+    flow_read = FlowRead.model_validate(flow, from_attributes=True)
+    translated = translate_starter_flows([flow_read], locale)[0]
+    if translated.data and isinstance(translated.data, dict):
+        nodes = translated.data.get("nodes", [])
+        translated.data = {**translated.data, "nodes": translate_flow_notes(nodes, locale)}
+    return compress_response(translated)
 
 
 @router.post("/expand/", status_code=200, dependencies=[Depends(get_current_active_user)], include_in_schema=False)

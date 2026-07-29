@@ -1,4 +1,4 @@
-import type { FlowType } from "@/types/flow";
+import type { FlowSummaryType, FlowType } from "@/types/flow";
 
 export interface TeamTemplateSummary {
   id: string;
@@ -56,7 +56,7 @@ export interface CardData {
   bgHorizontalImage: string;
   icon: string;
   category: string;
-  flow: FlowType | undefined;
+  flow: FlowSummaryType | undefined;
 }
 
 export interface TemplateCategoryProps {
@@ -69,7 +69,7 @@ export interface TemplateContentProps {
   categories: NavItem[];
 }
 
-export type TemplateExample = FlowType & {
+export type TemplateExample = (FlowSummaryType | FlowType) & {
   source?: "system" | "team";
   created_by?: string | null;
   visibility?: "PUBLIC" | "PRIVATE";

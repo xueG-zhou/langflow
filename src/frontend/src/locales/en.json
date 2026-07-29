@@ -2518,7 +2518,6 @@
   "textAnnotation.errors.export": "Failed to export annotations",
   "textAnnotation.errors.addTexts": "Failed to add texts",
   "textAnnotation.errors.deleteTask": "Failed to delete text",
-  "textAnnotation.errors.projectNotFound": "Project not found",
   "humanInput.required": "Human input required",
   "humanInput.runFailed": "Workflow run failed",
   "humanInput.waitingForInput": "Waiting for Human Input",
@@ -2562,7 +2561,7 @@
   "inspectionPanel.close": "Close",
   "nodeToolbar.parameters": "Parameters",
   "canvasControls.minimizeAll": "Minimize all",
-  "canvasControls.expandAll": "Expand all"
+  "canvasControls.expandAll": "Expand all",
   "textAnnotation.errors.projectNotFound": "Project not found",
   "settings.nav.skills": "Skills",
   "settings.nav.components": "Components",

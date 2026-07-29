@@ -1,4 +1,4 @@
-import type { FlowType } from "@/types/flow";
+import type { FlowSummaryType } from "@/types/flow";
 
 /**
  * The stable identifier the backend ships on each ``FlowType`` example —
@@ -17,9 +17,9 @@ export type StarterTemplateNameKey = "simple_agent" | "vector_store_rag";
  * the null case — usually by showing a placeholder or skipping the action.
  */
 export function findStarterTemplate(
-  examples: FlowType[],
+  examples: FlowSummaryType[],
   nameKey: StarterTemplateNameKey,
-): FlowType | null {
+): FlowSummaryType | null {
   for (const example of examples) {
     if (example.name_key === nameKey) {
       return example;

@@ -5,6 +5,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { AuthContext } from "@/contexts/authContext";
+import { useGetBasicExample } from "@/controllers/API/queries/flows/use-get-basic-example";
 import {
   useDeleteTeamTemplate,
   useGetTeamTemplate,
@@ -55,6 +56,7 @@ export default function TemplateContentComponent({
     { enabled },
   );
   const { mutate: getTeamTemplate } = useGetTeamTemplate();
+  const { mutate: getBasicExample } = useGetBasicExample();
   const { mutate: deleteTeamTemplate, isPending: isDeletingTemplate } =
     useDeleteTeamTemplate();
   const { mutate: patchTeamTemplate, isPending: isUpdatingTemplate } =
@@ -158,7 +160,10 @@ export default function TemplateContentComponent({
         onError: () => onFlowCreating(false),
       });
     } else {
-      createFromTemplate(example);
+      getBasicExample(example.id, {
+        onSuccess: createFromTemplate,
+        onError: () => onFlowCreating(false),
+      });
     }
     track("New Flow Created", { template: `${example.name} Template` });
   };

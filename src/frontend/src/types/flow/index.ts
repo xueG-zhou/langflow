@@ -40,6 +40,8 @@ export type FlowType = {
   name_key?: string | null;
 };
 
+export type FlowSummaryType = Omit<FlowType, "data">;
+
 export type A2ACardOverrides = {
   name?: string;
   description?: string;
