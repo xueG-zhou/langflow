@@ -33,6 +33,7 @@ import SourceChunksPage from "./pages/MainPage/pages/knowledgePage/sourceChunksP
 import CollectionPage from "./pages/MainPage/pages/main-page";
 import SettingsPage from "./pages/SettingsPage";
 import ApiKeysPage from "./pages/SettingsPage/pages/ApiKeysPage";
+import ComponentsPage from "./pages/SettingsPage/pages/ComponentsPage";
 import DBProvidersPage from "./pages/SettingsPage/pages/DBProvidersPage";
 import GeneralPage from "./pages/SettingsPage/pages/GeneralPage";
 import GlobalVariablesPage from "./pages/SettingsPage/pages/GlobalVariablesPage";
@@ -165,6 +166,7 @@ const router = createBrowserRouter(
                   <Route path="mcp-servers" element={<MCPServersPage />} />
                   <Route path="mcp-client" element={<McpClientPage />} />
                   <Route path="skills" element={<SkillsPage />} />
+                  <Route path="components" element={<ComponentsPage />} />
                   <Route
                     path="triton-servers"
                     element={<TritonServersPage />}

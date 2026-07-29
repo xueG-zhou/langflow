@@ -22,6 +22,7 @@ from .folder import Folder
 from .ingestion_run import IngestionRun, IngestionRunStatus
 from .jobs import Job
 from .knowledge_base import KnowledgeBaseRecord, KnowledgeBaseStatus
+from .managed_component import ManagedComponentBundle, ManagedComponentStatus
 from .memory_base import MemoryBase, MemoryBaseSession, MemoryBaseWorkflowRun, MessageIngestionRecord
 from .message import MessageTable
 from .team_template import TeamTemplate, TeamTemplateStatus
@@ -56,6 +57,8 @@ __all__ = [
     "Job",
     "KnowledgeBaseRecord",
     "KnowledgeBaseStatus",
+    "ManagedComponentBundle",
+    "ManagedComponentStatus",
     "MemoryBase",
     "MemoryBaseSession",
     "MemoryBaseWorkflowRun",

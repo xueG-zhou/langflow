@@ -52,6 +52,7 @@ export const URLs = {
   ANNOTATION_PROJECTS: `annotation-projects`,
   TEXT_ANNOTATION_PROJECTS: `text-annotation-projects`,
   SKILLS: "skills",
+  MANAGED_COMPONENTS: "managed-components",
 } as const;
 
 // IMPORTANT: FOLDERS endpoint now points to 'projects' for backward compatibility
