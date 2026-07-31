@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { useGetBasicExample } from "@/controllers/API/queries/flows/use-get-basic-example";
 import useSaveFlow from "@/hooks/flows/use-save-flow";
 import useFlowStore from "@/stores/flowStore";
 import useFlowsManagerStore from "@/stores/flowsManagerStore";
@@ -24,52 +25,63 @@ export function useApplyTemplateToCurrentFlow() {
     (state) => state.setCurrentFlow,
   );
   const saveFlow = useSaveFlow();
+  const { mutate: getBasicExample } = useGetBasicExample();
 
   return useCallback(
     (nameKey: StarterTemplateNameKey, onFitted?: () => void): boolean => {
-      const template = findStarterTemplate(examples, nameKey);
-      if (!template?.data) return false;
+      const summary = findStarterTemplate(examples, nameKey);
+      if (!summary) return false;
 
-      if (currentFlow) {
-        const renamedFlow: FlowType = {
-          ...currentFlow,
-          name: getFolderScopedDuplicateName(
-            { ...currentFlow, name: template.name },
-            flows ?? [],
-            currentFlow.folder_id,
-          ),
-          data: {
-            nodes: template.data.nodes ?? [],
-            edges: template.data.edges ?? [],
-            viewport: currentFlow.data?.viewport ?? { x: 0, y: 0, zoom: 1 },
-          },
-        };
-        // resetFlow (called inside setCurrentFlowInManager) sets nodes/edges
-        // and calls syncNodeTranslations — no need for separate setNodes/setEdges.
-        setCurrentFlowInManager(renamedFlow);
-        // Roll back the optimistic rename on failure (saveFlow toasts its own error).
-        // Only restore if the user hasn't already switched to a different flow.
-        void saveFlow(renamedFlow).catch(() => {
-          const latest = useFlowsManagerStore.getState().currentFlow;
-          if (latest?.id === renamedFlow.id) {
-            setCurrentFlowInManager(currentFlow);
+      getBasicExample(summary.id, {
+        onSuccess: (template) => {
+          if (!template.data) return;
+
+          if (currentFlow) {
+            const renamedFlow: FlowType = {
+              ...currentFlow,
+              name: getFolderScopedDuplicateName(
+                { ...currentFlow, name: template.name },
+                flows ?? [],
+                currentFlow.folder_id,
+              ),
+              data: {
+                nodes: template.data.nodes ?? [],
+                edges: template.data.edges ?? [],
+                viewport: currentFlow.data?.viewport ?? {
+                  x: 0,
+                  y: 0,
+                  zoom: 1,
+                },
+              },
+            };
+            // resetFlow (called inside setCurrentFlowInManager) sets nodes/edges
+            // and calls syncNodeTranslations — no need for separate setNodes/setEdges.
+            setCurrentFlowInManager(renamedFlow);
+            // Roll back the optimistic rename on failure (saveFlow toasts its own error).
+            // Only restore if the user hasn't already switched to a different flow.
+            void saveFlow(renamedFlow).catch(() => {
+              const latest = useFlowsManagerStore.getState().currentFlow;
+              if (latest?.id === renamedFlow.id) {
+                setCurrentFlowInManager(currentFlow);
+              }
+            });
+          } else {
+            // No flow context yet — update the canvas directly as a fallback.
+            setNodes(template.data.nodes ?? []);
+            setEdges(template.data.edges ?? []);
           }
-        });
-      } else {
-        // No flow context yet — update the canvas directly as a fallback.
-        setNodes(template.data.nodes ?? []);
-        setEdges(template.data.edges ?? []);
-      }
 
-      // fitView reads node sizes from the DOM: wait two rAFs for ReactFlow to
-      // commit/measure, then snap (no duration) while the overlay still covers it.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          reactFlowInstance?.fitView({
-            padding: { left: "20px", right: "20px", top: "80px" },
+          // fitView reads node sizes from the DOM: wait two rAFs for ReactFlow to
+          // commit/measure, then snap (no duration) while the overlay still covers it.
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              reactFlowInstance?.fitView({
+                padding: { left: "20px", right: "20px", top: "80px" },
+              });
+              requestAnimationFrame(() => onFitted?.());
+            });
           });
-          requestAnimationFrame(() => onFitted?.());
-        });
+        },
       });
       return true;
     },
@@ -82,6 +94,7 @@ export function useApplyTemplateToCurrentFlow() {
       setCurrentFlowInManager,
       saveFlow,
       reactFlowInstance,
+      getBasicExample,
     ],
   );
 }

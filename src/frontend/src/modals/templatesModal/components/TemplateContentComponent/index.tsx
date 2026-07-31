@@ -5,10 +5,12 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { AuthContext } from "@/contexts/authContext";
+import { useGetBasicExample } from "@/controllers/API/queries/flows/use-get-basic-example";
 import {
   useDeleteTeamTemplate,
   useGetTeamTemplate,
   useGetTeamTemplates,
+  usePatchTeamTemplate,
 } from "@/controllers/API/queries/team-templates";
 import { ENABLE_KNOWLEDGE_BASES } from "@/customization/feature-flags";
 import { useCustomNavigate } from "@/customization/hooks/use-custom-navigate";
@@ -43,22 +45,35 @@ export default function TemplateContentComponent({
 }: TemplateContentComponentProps) {
   const { t } = useTranslation();
   const allExamples = useFlowsManagerStore((state) => state.examples);
+  const templateScope =
+    currentTab === "public-templates"
+      ? "public"
+      : currentTab === "my-templates"
+        ? "mine"
+        : "all";
   const { data: teamTemplatePage } = useGetTeamTemplates(
-    { page_size: 100 },
+    { page_size: 100, scope: templateScope },
     { enabled },
   );
   const { mutate: getTeamTemplate } = useGetTeamTemplate();
+  const { mutate: getBasicExample } = useGetBasicExample();
   const { mutate: deleteTeamTemplate, isPending: isDeletingTemplate } =
     useDeleteTeamTemplate();
+  const { mutate: patchTeamTemplate, isPending: isUpdatingTemplate } =
+    usePatchTeamTemplate();
   const { userData } = useContext(AuthContext);
   const setSuccessData = useAlertStore((state) => state.setSuccessData);
   const setErrorData = useAlertStore((state) => state.setErrorData);
 
   const examples = useMemo(() => {
-    const systemExamples = allExamples.map((example) => ({
-      ...example,
-      source: "system" as const,
-    }));
+    const systemExamples =
+      currentTab === "my-templates"
+        ? []
+        : allExamples.map((example) => ({
+            ...example,
+            source: "system" as const,
+            visibility: "PUBLIC" as const,
+          }));
     const teamExamples = (teamTemplatePage?.items ?? []).map((template) => ({
       ...template,
       description: template.description ?? "",
@@ -75,10 +90,7 @@ export default function TemplateContentComponent({
       })
       .filter(
         (example) =>
-          currentTab === "all-templates" ||
-          (currentTab === "team-templates" && example.source === "team") ||
-          example.tags?.includes(currentTab ?? "") ||
-          ("category" in example && example.category === currentTab),
+          currentTab !== "public-templates" || example.visibility === "PUBLIC",
       );
   }, [allExamples, currentTab, teamTemplatePage]);
 
@@ -148,7 +160,10 @@ export default function TemplateContentComponent({
         onError: () => onFlowCreating(false),
       });
     } else {
-      createFromTemplate(example);
+      getBasicExample(example.id, {
+        onSuccess: createFromTemplate,
+        onError: () => onFlowCreating(false),
+      });
     }
     track("New Flow Created", { template: `${example.name} Template` });
   };
@@ -173,6 +188,30 @@ export default function TemplateContentComponent({
         });
       },
     });
+  };
+
+  const handleVisibilityChange = (example: TemplateExample) => {
+    if (example.source !== "team" || !example.visibility) return;
+    if (
+      example.visibility === "PRIVATE" &&
+      !window.confirm(t("teamTemplates.publishConfirmation"))
+    ) {
+      return;
+    }
+    patchTeamTemplate(
+      {
+        id: example.id,
+        visibility: example.visibility === "PUBLIC" ? "PRIVATE" : "PUBLIC",
+      },
+      {
+        onSuccess: () => {
+          setSuccessData({ title: t("teamTemplates.visibilityUpdated") });
+        },
+        onError: () => {
+          setErrorData({ title: t("teamTemplates.visibilityUpdateFailed") });
+        },
+      },
+    );
   };
 
   const handleClearSearch = () => {
@@ -213,8 +252,9 @@ export default function TemplateContentComponent({
             examples={filteredExamples}
             onCardClick={handleCardClick}
             onDelete={handleDeleteTemplate}
+            onVisibilityChange={handleVisibilityChange}
             canDelete={canDeleteTemplate}
-            loading={loading || isDeletingTemplate}
+            loading={loading || isDeletingTemplate || isUpdatingTemplate}
           />
         ) : (
           <div className="flex flex-col items-center justify-center px-4 py-12 text-center">

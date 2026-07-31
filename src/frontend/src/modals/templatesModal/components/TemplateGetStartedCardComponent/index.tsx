@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
 import { convertTestName } from "@/components/common/storeCardComponent/utils/convert-test-name";
+import { useGetBasicExample } from "@/controllers/API/queries/flows/use-get-basic-example";
 import { useCustomNavigate } from "@/customization/hooks/use-custom-navigate";
 import { track } from "@/customization/utils/analytics";
 import useAddFlow from "@/hooks/flows/use-add-flow";
@@ -24,6 +25,7 @@ export default function TemplateGetStartedCardComponent({
   onFlowCreating,
 }: TemplateGetStartedCardComponentProps) {
   const addFlow = useAddFlow();
+  const { mutate: getBasicExample } = useGetBasicExample();
   const navigate = useCustomNavigate();
   const { folderId } = useParams();
   const myCollectionId = useFolderStore((state) => state.myCollectionId);
@@ -35,14 +37,23 @@ export default function TemplateGetStartedCardComponent({
 
     if (flow) {
       onFlowCreating(true);
-      updateIds(flow.data!);
-      addFlow({ flow })
-        .then((id) => {
-          navigate(`/flow/${id}/folder/${folderIdUrl}`);
-        })
-        .finally(() => {
-          onFlowCreating(false);
-        });
+      getBasicExample(flow.id, {
+        onSuccess: (fullFlow) => {
+          if (!fullFlow.data) {
+            onFlowCreating(false);
+            return;
+          }
+          updateIds(fullFlow.data);
+          void addFlow({ flow: fullFlow })
+            .then((id) => {
+              navigate(`/flow/${id}/folder/${folderIdUrl}`);
+            })
+            .finally(() => {
+              onFlowCreating(false);
+            });
+        },
+        onError: () => onFlowCreating(false),
+      });
 
       track("New Flow Created", { template: `${flow.name} Template` });
     } else {
@@ -63,7 +74,8 @@ export default function TemplateGetStartedCardComponent({
         "group relative flex h-full min-h-[200px] w-full cursor-pointer flex-col overflow-hidden rounded-3xl border focus-visible:border-ring md:min-h-[250px]",
         loading ? "cursor-default opacity-80" : "cursor-pointer",
       )}
-      tabIndex={1}
+      role="button"
+      tabIndex={0}
       onKeyDown={handleKeyDown}
       onClick={handleClick}
     >

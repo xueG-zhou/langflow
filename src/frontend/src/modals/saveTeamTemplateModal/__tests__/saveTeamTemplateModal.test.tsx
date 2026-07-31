@@ -91,7 +91,14 @@ jest.mock("../../baseModal", () => {
 import SaveTeamTemplateModal from "../index";
 
 describe("SaveTeamTemplateModal", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(window, "confirm").mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
   it("defaults to the current workflow values and submits user edits", async () => {
     const user = userEvent.setup();
@@ -114,7 +121,35 @@ describe("SaveTeamTemplateModal", () => {
         source_flow_id: "flow-1",
         name: "Edited template",
         description: "Edited description",
+        visibility: "PRIVATE",
       }),
+    );
+  });
+
+  it("confirms before saving a public template", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
+    render(<SaveTeamTemplateModal open setOpen={jest.fn()} />);
+
+    await user.selectOptions(screen.getByLabelText("Visibility"), "PUBLIC");
+    await user.click(screen.getByTestId("save-team-template-submit"));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(saveFlowMock).not.toHaveBeenCalled();
+    expect(createTemplateMock).not.toHaveBeenCalled();
+  });
+
+  it("saves the selected public visibility after confirmation", async () => {
+    const user = userEvent.setup();
+    render(<SaveTeamTemplateModal open setOpen={jest.fn()} />);
+
+    await user.selectOptions(screen.getByLabelText("Visibility"), "PUBLIC");
+    await user.click(screen.getByTestId("save-team-template-submit"));
+
+    await waitFor(() =>
+      expect(createTemplateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ visibility: "PUBLIC" }),
+      ),
     );
   });
 });

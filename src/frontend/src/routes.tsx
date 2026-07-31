@@ -33,6 +33,7 @@ import SourceChunksPage from "./pages/MainPage/pages/knowledgePage/sourceChunksP
 import CollectionPage from "./pages/MainPage/pages/main-page";
 import SettingsPage from "./pages/SettingsPage";
 import ApiKeysPage from "./pages/SettingsPage/pages/ApiKeysPage";
+import ComponentsPage from "./pages/SettingsPage/pages/ComponentsPage";
 import DBProvidersPage from "./pages/SettingsPage/pages/DBProvidersPage";
 import GeneralPage from "./pages/SettingsPage/pages/GeneralPage";
 import GlobalVariablesPage from "./pages/SettingsPage/pages/GlobalVariablesPage";
@@ -41,6 +42,7 @@ import McpClientPage from "./pages/SettingsPage/pages/McpClientPage";
 import ModelProvidersPage from "./pages/SettingsPage/pages/ModelProvidersPage";
 import MessagesPage from "./pages/SettingsPage/pages/messagesPage";
 import ShortcutsPage from "./pages/SettingsPage/pages/ShortcutsPage";
+import SkillsPage from "./pages/SettingsPage/pages/SkillsPage";
 import TritonServersPage from "./pages/SettingsPage/pages/TritonServersPage";
 import TritonServerDetailPage from "./pages/SettingsPage/pages/TritonServersPage/detail";
 import ViewPage from "./pages/ViewPage";
@@ -163,6 +165,8 @@ const router = createBrowserRouter(
                   <Route path="db-providers" element={<DBProvidersPage />} />
                   <Route path="mcp-servers" element={<MCPServersPage />} />
                   <Route path="mcp-client" element={<McpClientPage />} />
+                  <Route path="skills" element={<SkillsPage />} />
+                  <Route path="components" element={<ComponentsPage />} />
                   <Route
                     path="triton-servers"
                     element={<TritonServersPage />}

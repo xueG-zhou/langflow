@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import Loading from "@/components/ui/loading";
 import { api } from "@/controllers/API/api";
 import { getURL } from "@/controllers/API/helpers/constants";
+import { useGetBasicExample } from "@/controllers/API/queries/flows/use-get-basic-example";
 import type {
   IngestionRunInfo,
   PaginatedIngestionRunResponse,
@@ -188,6 +189,7 @@ const KnowledgeBasesTab = ({
     selectedFiles,
     clearSelection,
   });
+  const { mutate: getBasicExample } = useGetBasicExample();
 
   const { captureSubmit, applyOptimisticUpdate } = useOptimisticKnowledgeBase();
 
@@ -210,10 +212,15 @@ const KnowledgeBasesTab = ({
       (example) => example.name === "Knowledge Ingestion",
     );
 
-    if (knowledgeBasesExample && knowledgeBasesExample.data) {
-      updateIds(knowledgeBasesExample.data);
-      addFlow({ flow: knowledgeBasesExample }).then((id) => {
-        navigate(`/flow/${id}/folder/${folderIdUrl}`);
+    if (knowledgeBasesExample) {
+      getBasicExample(knowledgeBasesExample.id, {
+        onSuccess: (fullFlow) => {
+          if (!fullFlow.data) return;
+          updateIds(fullFlow.data);
+          void addFlow({ flow: fullFlow }).then((id) => {
+            navigate(`/flow/${id}/folder/${folderIdUrl}`);
+          });
+        },
       });
       track("New Flow Created", {
         template: `${knowledgeBasesExample.name} Template`,

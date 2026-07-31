@@ -874,6 +874,92 @@ def get_embeddings(
             raise ValueError(msg)
         msg = f"{provider} API key is required."
         raise ValueError(msg)
+    # Get embedding class from metadata. Selections persisted via the
+    # generic ``/models`` catalog (e.g. saved into ``KnowledgeBase.model_selection``
+    # by the KB upload flow) lack the enriched embedding metadata, so we
+    # fall back to deriving it from the provider name. Both lookups
+    # share the same source of truth in ``class_registry``.
+    embedding_class_name = metadata.get("embedding_class") or EMBEDDING_PROVIDER_CLASS_MAPPING.get(provider)
+    if not embedding_class_name:
+        msg = (
+            f"No embedding class defined in metadata for {model_name} (provider: {provider}). "
+            "Add the provider to EMBEDDING_PROVIDER_CLASS_MAPPING or re-select the model."
+        )
+        raise ValueError(msg)
+    embedding_class = unified_models_module.get_embedding_class(embedding_class_name)
+
+    # --- build kwargs from param_mapping -------------------------------------
+    param_mapping: dict[str, str] = metadata.get("param_mapping") or EMBEDDING_PARAM_MAPPINGS.get(provider, {})
+    if not param_mapping:
+        msg = (
+            f"Parameter mapping not found in metadata for model '{model_name}' (provider: {provider}). "
+            "This usually means the model was saved with an older format that is no longer recognized. "
+            "Please re-select the embedding model in the component configuration."
+        )
+        raise ValueError(msg)
+
+    kwargs: dict[str, Any] = {}
+
+    # Model name
+    if "model" in param_mapping:
+        kwargs[param_mapping["model"]] = model_name
+    elif "model_id" in param_mapping:
+        kwargs[param_mapping["model_id"]] = model_name
+
+    # OpenAIEmbeddings normally tokenizes long inputs client-side and sends
+    # integer token arrays to the embeddings endpoint. OpenAI-compatible
+    # bge-m3 servers generally accept only string inputs, so bypass that
+    # length-safe tokenization path and send the original chunk text.
+    normalized_model_name = str(model_name).strip().lower().replace("_", "-")
+    if embedding_class_name == "OpenAIEmbeddings" and normalized_model_name in {
+        "bge-m3",
+        "baai/bge-m3",
+    }:
+        kwargs["check_embedding_ctx_length"] = False
+
+    # API key
+    if "api_key" in param_mapping and api_key:
+        kwargs[param_mapping["api_key"]] = api_key
+
+    # Optional parameters - only add when both a value is supplied *and* the
+    # provider's param_mapping declares the corresponding key.
+    optional_params: dict[str, Any] = {
+        "api_base": api_base_value or None,
+        "dimensions": int(dimensions) if dimensions else None,
+        "chunk_size": int(chunk_size) if chunk_size else None,
+        "request_timeout": float(request_timeout) if request_timeout else None,
+        "max_retries": int(max_retries) if max_retries else None,
+        "show_progress_bar": show_progress_bar,
+        "model_kwargs": model_kwargs if model_kwargs else None,
+    }
+
+    # Watson-specific parameters
+    if provider in {"IBM WatsonX", "IBM watsonx.ai"}:
+        watsonx_provider_vars = unified_models_module.get_all_variables_for_provider(user_id, provider)
+        url_value = watsonx_url or watsonx_provider_vars.get("WATSONX_URL") or _env_if_allowed("WATSONX_URL")
+        pid_value = (
+            watsonx_project_id
+            or watsonx_provider_vars.get("WATSONX_PROJECT_ID")
+            or _env_if_allowed("WATSONX_PROJECT_ID")
+        )
+
+        has_url = bool(url_value)
+        has_project_id = bool(pid_value)
+
+        if has_url and has_project_id:
+            if "url" in param_mapping:
+                kwargs[param_mapping["url"]] = url_value
+            if "project_id" in param_mapping:
+                kwargs[param_mapping["project_id"]] = pid_value
+        elif has_url or has_project_id:
+            missing = "project ID (WATSONX_PROJECT_ID)" if has_url else "URL (WATSONX_URL)"
+            provided = "URL" if has_url else "project ID"
+            msg = (
+                f"IBM WatsonX requires both a URL and project ID. "
+                f"You provided a watsonx {provided} but no {missing}. "
+                f"Please configure the missing value in the component or set the environment variable."
+            )
+            raise ValueError(msg)
 
     embedding_class, kwargs = composed
 

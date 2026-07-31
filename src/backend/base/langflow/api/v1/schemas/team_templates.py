@@ -3,15 +3,16 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+from langflow.services.database.models.team_template import TeamTemplateVisibility
+
 
 class TeamTemplateCreate(BaseModel):
     source_flow_id: UUID
     name: str = Field(min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=500)
-    category: str = Field(default="all-templates", min_length=1, max_length=64)
-    tags: list[str] = Field(default_factory=list, max_length=10)
+    visibility: TeamTemplateVisibility = TeamTemplateVisibility.PRIVATE
 
-    @field_validator("name", "category")
+    @field_validator("name")
     @classmethod
     def strip_required(cls, value: str) -> str:
         value = value.strip()
@@ -20,20 +21,14 @@ class TeamTemplateCreate(BaseModel):
             raise ValueError(msg)
         return value
 
-    @field_validator("tags")
-    @classmethod
-    def validate_tags(cls, value: list[str]) -> list[str]:
-        return list(dict.fromkeys(tag.strip() for tag in value if tag.strip()))
-
 
 class TeamTemplateUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=500)
-    category: str | None = Field(default=None, min_length=1, max_length=64)
-    tags: list[str] | None = Field(default=None, max_length=10)
+    visibility: TeamTemplateVisibility | None = None
     refresh_from_source: bool = False
 
-    @field_validator("name", "category")
+    @field_validator("name")
     @classmethod
     def strip_optional_required(cls, value: str | None) -> str | None:
         if value is None:
@@ -44,20 +39,12 @@ class TeamTemplateUpdate(BaseModel):
             raise ValueError(msg)
         return value
 
-    @field_validator("tags")
-    @classmethod
-    def validate_optional_tags(cls, value: list[str] | None) -> list[str] | None:
-        if value is None:
-            return None
-        return list(dict.fromkeys(tag.strip() for tag in value if tag.strip()))
-
 
 class TeamTemplateSummary(BaseModel):
     id: UUID
     name: str
     description: str | None
-    category: str
-    tags: list[str]
+    visibility: TeamTemplateVisibility
     icon: str | None
     gradient: str | None
     source_flow_id: UUID | None

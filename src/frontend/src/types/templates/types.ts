@@ -1,11 +1,10 @@
-import type { FlowType } from "@/types/flow";
+import type { FlowSummaryType, FlowType } from "@/types/flow";
 
 export interface TeamTemplateSummary {
   id: string;
   name: string;
   description?: string | null;
-  category: string;
-  tags: string[];
+  visibility: "PUBLIC" | "PRIVATE";
   icon?: string | null;
   gradient?: string | null;
   source_flow_id?: string | null;
@@ -33,8 +32,12 @@ export interface CreateTeamTemplatePayload {
   source_flow_id: string;
   name: string;
   description?: string;
-  category: string;
-  tags: string[];
+  visibility: "PUBLIC" | "PRIVATE";
+}
+
+export interface UpdateTeamTemplatePayload {
+  id: string;
+  visibility: "PUBLIC" | "PRIVATE";
 }
 
 export interface NavItem {
@@ -53,7 +56,7 @@ export interface CardData {
   bgHorizontalImage: string;
   icon: string;
   category: string;
-  flow: FlowType | undefined;
+  flow: FlowSummaryType | undefined;
 }
 
 export interface TemplateCategoryProps {
@@ -66,16 +69,17 @@ export interface TemplateContentProps {
   categories: NavItem[];
 }
 
-export type TemplateExample = FlowType & {
+export type TemplateExample = (FlowSummaryType | FlowType) & {
   source?: "system" | "team";
   created_by?: string | null;
-  category?: string;
+  visibility?: "PUBLIC" | "PRIVATE";
 };
 
 export interface TemplateCardComponentProps {
   example: TemplateExample;
   onClick: () => void;
   onDelete?: () => void;
+  onVisibilityChange?: () => void;
 }
 
 export interface NavProps {

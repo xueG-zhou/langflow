@@ -12,6 +12,11 @@ const setNodes = jest.fn();
 const setEdges = jest.fn();
 const setCurrentFlowInManager = jest.fn();
 const saveFlow = jest.fn().mockResolvedValue(undefined);
+const mockGetBasicExample = jest.fn(
+  (flowId: string, options: { onSuccess?: (flow: unknown) => void }) => {
+    options.onSuccess?.(fullExamples.find((flow) => flow.id === flowId));
+  },
+);
 
 let currentFlow: unknown;
 
@@ -26,6 +31,10 @@ jest.mock("@/stores/flowStore", () => ({
 jest.mock("@/hooks/flows/use-save-flow", () => ({
   __esModule: true,
   default: () => saveFlow,
+}));
+
+jest.mock("@/controllers/API/queries/flows/use-get-basic-example", () => ({
+  useGetBasicExample: () => ({ mutate: mockGetBasicExample }),
 }));
 
 const fullExamples = [
@@ -86,6 +95,7 @@ describe("useApplyTemplateToCurrentFlow", () => {
     setEdges.mockClear();
     setCurrentFlowInManager.mockClear();
     saveFlow.mockClear();
+    mockGetBasicExample.mockClear();
     currentFlow = {
       id: "flow-1",
       name: "New Flow",

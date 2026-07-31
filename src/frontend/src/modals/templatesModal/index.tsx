@@ -7,12 +7,10 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { useCustomNavigate } from "@/customization/hooks/use-custom-navigate";
 import { track } from "@/customization/utils/analytics";
 import useAddFlow from "@/hooks/flows/use-add-flow";
-import { useUtilityStore } from "@/stores/utilityStore";
 import type { Category } from "@/types/templates/types";
 import { cn } from "@/utils/utils";
 import type { newFlowModalPropsType } from "../../types/components";
 import BaseModal from "../baseModal";
-import GetStartedComponent from "./components/GetStartedComponent";
 import { Nav } from "./components/navComponent";
 import TemplateContentComponent from "./components/TemplateContentComponent";
 
@@ -21,21 +19,11 @@ export default function TemplatesModal({
   setOpen,
 }: newFlowModalPropsType): JSX.Element {
   const { t } = useTranslation();
-  const [currentTab, setCurrentTab] = useState("get-started");
+  const [currentTab, setCurrentTab] = useState("all-templates");
   const [loading, setLoading] = useState(false);
   const addFlow = useAddFlow();
   const navigate = useCustomNavigate();
   const { folderId } = useParams();
-  const hideStarterProjects = useUtilityStore(
-    (state) => state.hideStarterProjects,
-  );
-
-  // If starter projects are hidden and we're on the get-started tab, switch to all-templates
-  const effectiveTab =
-    hideStarterProjects && currentTab === "get-started"
-      ? "all-templates"
-      : currentTab;
-
   const handleFlowCreating = (isCreating: boolean) => {
     setLoading(isCreating);
   };
@@ -60,66 +48,21 @@ export default function TemplatesModal({
     {
       title: t("templatesModal.title"),
       items: [
-        // Hide "Get Started" tab if starter projects are hidden
-        ...(hideStarterProjects
-          ? []
-          : [
-              {
-                title: t("templatesModal.getStarted"),
-                icon: "SquarePlay",
-                id: "get-started",
-              },
-            ]),
         {
           title: t("templatesModal.allTemplates"),
           icon: "LayoutPanelTop",
           id: "all-templates",
         },
         {
-          title: t("teamTemplates.teamTemplates"),
-          icon: "Users",
-          id: "team-templates",
-        },
-      ],
-    },
-    {
-      title: t("templatesModal.useCases"),
-      items: [
-        {
-          title: t("templatesModal.assistants"),
-          icon: "BotMessageSquare",
-          id: "assistants",
+          title: t("teamTemplates.publicTemplates"),
+          icon: "Globe2",
+          id: "public-templates",
         },
         {
-          title: t("templatesModal.classification"),
-          icon: "Tags",
-          id: "classification",
+          title: t("teamTemplates.myTemplates"),
+          icon: "UserRound",
+          id: "my-templates",
         },
-        {
-          title: t("templatesModal.coding"),
-          icon: "TerminalIcon",
-          id: "coding",
-        },
-        {
-          title: t("templatesModal.contentGeneration"),
-          icon: "Newspaper",
-          id: "content-generation",
-        },
-        { title: t("templatesModal.qa"), icon: "Database", id: "q-a" },
-        // { title: "Summarization", icon: "Bot", id: "summarization" },
-        // { title: "Web Scraping", icon: "CodeXml", id: "web-scraping" },
-      ],
-    },
-    {
-      title: t("templatesModal.methodology"),
-      items: [
-        {
-          title: t("templatesModal.prompting"),
-          icon: "MessagesSquare",
-          id: "chatbots",
-        },
-        { title: t("templatesModal.rag"), icon: "Database", id: "rag" },
-        { title: t("templatesModal.agents"), icon: "Bot", id: "agents" },
       ],
     },
   ];
@@ -131,24 +74,17 @@ export default function TemplatesModal({
           <SidebarProvider width="15rem" defaultOpen={false}>
             <Nav
               categories={categories}
-              currentTab={effectiveTab}
+              currentTab={currentTab}
               setCurrentTab={setCurrentTab}
             />
             <main className="flex flex-1 flex-col gap-4 overflow-auto p-6 md:gap-8">
-              {effectiveTab === "get-started" ? (
-                <GetStartedComponent
-                  loading={loading}
-                  onFlowCreating={handleFlowCreating}
-                />
-              ) : (
-                <TemplateContentComponent
-                  currentTab={effectiveTab}
-                  categories={categories.flatMap((category) => category.items)}
-                  enabled={open}
-                  loading={loading}
-                  onFlowCreating={handleFlowCreating}
-                />
-              )}
+              <TemplateContentComponent
+                currentTab={currentTab}
+                categories={categories.flatMap((category) => category.items)}
+                enabled={open}
+                loading={loading}
+                onFlowCreating={handleFlowCreating}
+              />
               <BaseModal.Footer>
                 <div className="flex w-full flex-col justify-between gap-4 pb-4 sm:flex-row sm:items-center">
                   <div className="flex flex-col items-start justify-center">

@@ -19,6 +19,7 @@ export default function TemplateCardComponent({
   example,
   onClick,
   onDelete,
+  onVisibilityChange,
   disabled = false,
 }: TemplateCardComponentExtendedProps) {
   const { t } = useTranslation();
@@ -74,8 +75,31 @@ export default function TemplateCardComponent({
             </h3>
             {example.source === "team" && (
               <Badge variant="secondary" className="ml-2 shrink-0">
-                {t("teamTemplates.team")}
+                {example.visibility === "PUBLIC"
+                  ? t("teamTemplates.public")
+                  : t("teamTemplates.private")}
               </Badge>
+            )}
+            {example.source === "team" && onVisibilityChange && (
+              <button
+                type="button"
+                className="ml-auto rounded p-1 text-muted-foreground hover:bg-muted"
+                aria-label={t("teamTemplates.changeVisibility")}
+                title={t("teamTemplates.changeVisibility")}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onVisibilityChange();
+                }}
+                disabled={disabled}
+              >
+                <ForwardedIconComponent
+                  name={
+                    example.visibility === "PUBLIC" ? "LockKeyhole" : "Globe2"
+                  }
+                  className="h-4 w-4"
+                />
+              </button>
             )}
             {example.source === "team" && onDelete && (
               <DeleteConfirmationModal
@@ -91,7 +115,7 @@ export default function TemplateCardComponent({
               >
                 <button
                   type="button"
-                  className="ml-auto rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   aria-label={t("teamTemplates.delete")}
                   data-testid={`delete-team-template-${example.id}`}
                   onClick={(event) => event.stopPropagation()}

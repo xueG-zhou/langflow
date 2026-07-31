@@ -11,8 +11,8 @@ Public surface:
 * ``BackendType`` — enum of registered backend identifiers.
 * ``register_backend`` / ``create_backend`` — registry entry points.
 
-In this phase only **Chroma** and **OpenSearch** are registered. The
-``AstraBackend`` / ``MongoDBBackend`` / ``PostgresBackend`` classes are
+In this phase **Chroma**, **OpenSearch**, and **Postgres/pgvector** are registered. The
+``AstraBackend`` / ``MongoDBBackend`` classes are
 preserved as stubs so the framework wiring (enum values, type imports,
 DB-stored ``backend_type`` strings on existing rows) keeps round-tripping,
 but they are not instantiable through ``create_backend`` and the picker UI
@@ -51,13 +51,14 @@ from lfx.base.knowledge_bases.backends.registry import (
 )
 
 # Register the supported built-in backends on import. AstraBackend /
-# MongoDBBackend / PostgresBackend are intentionally NOT registered while
+# MongoDBBackend are intentionally NOT registered while
 # they're stubbed out — see each module's docstring.
 #
 # ChromaCloudBackend shares BackendType.CHROMA; create_backend() dispatches
 # to the correct class based on backend_config["mode"] at call time.
 register_backend(BackendType.CHROMA, ChromaLocalBackend)
 register_backend(BackendType.OPENSEARCH, OpenSearchBackend)
+register_backend(BackendType.POSTGRES, PostgresBackend)
 
 __all__ = [
     "AstraBackend",

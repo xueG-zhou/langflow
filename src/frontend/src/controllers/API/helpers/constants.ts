@@ -53,6 +53,8 @@ export const URLs = {
   TRITON_SERVERS: `triton_servers`,
   ANNOTATION_PROJECTS: `annotation-projects`,
   TEXT_ANNOTATION_PROJECTS: `text-annotation-projects`,
+  SKILLS: "skills",
+  MANAGED_COMPONENTS: "managed-components",
 } as const;
 
 // IMPORTANT: FOLDERS endpoint now points to 'projects' for backward compatibility
