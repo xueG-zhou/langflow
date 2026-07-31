@@ -71,6 +71,19 @@ public final class V1Models {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record RunInput(List<String> components,
+                           @JsonProperty("input_value") String inputValue,
+                           String type) {
+        public RunInput {
+            components = components == null ? List.of() : List.copyOf(components);
+            inputValue = inputValue == null ? "" : inputValue;
+            type = type == null ? "chat" : type;
+        }
+
+        public RunInput() { this(List.of(), "", "chat"); }
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record RunRequest(@JsonProperty("input_value") String inputValue,
                              @JsonProperty("input_type") String inputType,
                              @JsonProperty("output_type") String outputType,
@@ -84,6 +97,24 @@ public final class V1Models {
     public record RunOutput(Map<String, Object> results, Map<String, Object> artifacts,
                             List<Map<String, Object>> outputs, @JsonProperty("session_id") String sessionId,
                             Double timedelta) {
+        public String firstText() {
+            if (outputs == null) return null;
+            for (Map<String, Object> component : outputs) {
+                Object raw = component.get("results");
+                if (!(raw instanceof Map<?, ?> componentResults)) continue;
+                Object message = componentResults.get("message");
+                if (message instanceof Map<?, ?> msg && msg.get("text") != null) {
+                    return msg.get("text").toString();
+                }
+                if (componentResults.get("text") != null) return componentResults.get("text").toString();
+            }
+            return null;
+        }
+
+        public boolean hasErrors() {
+            if (outputs != null && outputs.stream().anyMatch(output -> output.get("error") != null)) return true;
+            return artifacts != null && artifacts.get("error") != null;
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -93,25 +124,24 @@ public final class V1Models {
                 return null;
             }
             for (RunOutput block : outputs) {
-                if (block.outputs() == null) {
-                    continue;
-                }
-                for (Map<String, Object> component : block.outputs()) {
-                    Object raw = component.get("results");
-                    if (!(raw instanceof Map<?, ?> results)) {
-                        continue;
-                    }
-                    Object message = results.get("message");
-                    if (message instanceof Map<?, ?> msg && msg.get("text") != null) {
-                        return msg.get("text").toString();
-                    }
-                    if (results.get("text") != null) {
-                        return results.get("text").toString();
-                    }
-                }
+                String text = block.firstText();
+                if (text != null) return text;
             }
             return null;
         }
+
+        public List<String> allTextOutputs() {
+            if (outputs == null) return List.of();
+            return outputs.stream().map(RunOutput::firstText).filter(java.util.Objects::nonNull).toList();
+        }
+
+        public String getChatOutput() { return firstTextOutput(); }
+        public List<RunOutput> getAllOutputs() { return outputs == null ? List.of() : List.copyOf(outputs); }
+        public List<String> getTextOutputs() { return allTextOutputs(); }
+        public boolean hasErrors() { return outputs != null && outputs.stream().anyMatch(RunOutput::hasErrors); }
+        public boolean isCompleted() { return outputs != null && !outputs.isEmpty() && !hasErrors(); }
+        public boolean isFailed() { return outputs == null || outputs.isEmpty() || hasErrors(); }
+        public boolean isInProgress() { return false; }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -124,10 +154,8 @@ public final class V1Models {
                 return data.path("message").path("text").isMissingNode()
                         ? null : data.path("message").path("text").asText();
             }
+            if (!"token".equals(event)) return null;
             JsonNode token = data.get("chunk");
-            if (token == null) {
-                token = data.get("token");
-            }
             return token == null || token.isNull() ? null : token.asText();
         }
 
@@ -141,6 +169,16 @@ public final class V1Models {
 
         public boolean isError() {
             return "error".equals(event);
+        }
+
+        public RunResponse finalResponse() {
+            if (!isEnd() || data == null || !data.hasNonNull("result")) return null;
+            try {
+                return new com.fasterxml.jackson.databind.ObjectMapper()
+                        .treeToValue(data.get("result"), RunResponse.class);
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+                throw new IllegalArgumentException("Invalid final run response", e);
+            }
         }
     }
 
