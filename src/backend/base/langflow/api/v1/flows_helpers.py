@@ -358,6 +358,8 @@ async def _read_flow(
     session: AsyncSession,
     flow_id: UUID,
     user_id: UUID,
+    *,
+    defer_data: bool = False,
 ):
     """Read a flow.
 
@@ -366,6 +368,8 @@ async def _read_flow(
     ``ensure_flow_permission`` decides access. Otherwise the query stays
     owner-scoped so the OSS pass-through default cannot widen visibility.
     """
+    from sqlalchemy.orm import defer
+
     from langflow.services.authorization.fetch import authorized_or_owner_scoped
 
     return await authorized_or_owner_scoped(
@@ -375,6 +379,7 @@ async def _read_flow(
         resource_id=flow_id,
         owner_column=Flow.user_id,
         owner_id=user_id,
+        statement_options=(defer(Flow.data),) if defer_data else (),
     )
 
 
