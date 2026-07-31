@@ -30,17 +30,20 @@ def _build_server_config(base_url: str, project_id, transport: str):
 
 
 class TestProjectMCPServerName:
-    def test_preserves_existing_ascii_name_format(self):
+    def test_ascii_name_includes_project_id_suffix(self):
         project_id = uuid4()
 
-        assert _get_project_mcp_server_name(project_id, "Test Project") == "lf-test_project"
+        server_name = _get_project_mcp_server_name(project_id, "Test Project")
+
+        assert server_name.startswith("lf-")
+        assert len(server_name) == 29
 
     def test_uses_project_id_when_name_contains_only_chinese_characters(self):
         project_id = uuid4()
 
         server_name = _get_project_mcp_server_name(project_id, "智能报告")
 
-        assert server_name == f"lf-project_{project_id.hex[:19]}"
+        assert server_name == _get_project_mcp_server_name(project_id, "Test Project")
         assert len(server_name) <= MAX_MCP_SERVER_NAME_LENGTH
 
     def test_chinese_project_names_generate_distinct_server_names(self):
@@ -52,8 +55,27 @@ class TestProjectMCPServerName:
 
         assert first_server_name != second_server_name
 
-    def test_keeps_literal_unnamed_project_backward_compatible(self):
-        assert _get_project_mcp_server_name(uuid4(), "unnamed") == "lf-unnamed"
+    def test_literal_unnamed_project_is_unique(self):
+        project_id = uuid4()
+
+        assert _get_project_mcp_server_name(project_id, "unnamed") == _get_project_mcp_server_name(
+            project_id, "Different Name"
+        )
+
+    def test_long_names_keep_full_uuid_within_limit(self):
+        project_id = uuid4()
+
+        server_name = _get_project_mcp_server_name(project_id, "a" * (MAX_MCP_SERVER_NAME_LENGTH * 2))
+
+        assert len(server_name) == 29
+
+    def test_same_display_name_generates_distinct_server_names(self):
+        first_project_id = uuid4()
+        second_project_id = uuid4()
+
+        assert _get_project_mcp_server_name(
+            first_project_id, "New Project"
+        ) != _get_project_mcp_server_name(second_project_id, "New Project")
 
 
 class TestMCPServerListMetadata:
@@ -191,7 +213,7 @@ class TestValidateMcpServerForProject:
 
             assert result.server_exists is False
             assert result.project_id_matches is False
-            assert result.server_name == "lf-test_project"
+            assert result.server_name == _get_project_mcp_server_name(test_project.id, test_project.name)
             assert result.existing_config is None
             assert result.conflict_message == ""
 
@@ -233,7 +255,7 @@ class TestValidateMcpServerForProject:
     async def test_validate_server_exists_project_doesnt_match(
         self, active_user, test_project, created_api_key, client: AsyncClient, transport
     ):
-        """Test validation when server exists but project ID doesn't match."""
+        """A colliding legacy name owned by another project does not block creation."""
         other_project_id = uuid4()
         server_name = "lf-test_project"
         _, server_config = _build_server_config(client.base_url, other_project_id, transport)
@@ -254,12 +276,11 @@ class TestValidateMcpServerForProject:
                 test_project.id, test_project.name, active_user, session, storage_service, settings_service, "create"
             )
 
-            assert result.server_exists is True
+            assert result.server_exists is False
             assert result.project_id_matches is False
-            assert result.server_name == server_name
-            assert result.existing_config == server_config
-            assert "MCP server name conflict" in result.conflict_message
-            assert str(test_project.id) in result.conflict_message
+            assert result.server_name == _get_project_mcp_server_name(test_project.id, test_project.name)
+            assert result.existing_config is None
+            assert result.conflict_message == ""
 
         # Cleanup - delete the server
         await client.delete(f"/api/v2/mcp/servers/{server_name}", headers={"x-api-key": created_api_key.api_key})
@@ -271,7 +292,7 @@ class TestValidateMcpServerForProject:
     ):
         """Test different conflict messages for different operations."""
         other_project_id = uuid4()
-        server_name = "lf-test_project"
+        server_name = _get_project_mcp_server_name(test_project.id, test_project.name)
         _, server_config = _build_server_config(client.base_url, other_project_id, transport)
 
         # Create MCP server with different project ID via API
@@ -327,7 +348,7 @@ class TestValidateMcpServerForProject:
                 # Should return result allowing operation to proceed on validation failure
                 assert result.server_exists is False
                 assert result.project_id_matches is False
-                assert result.server_name == "lf-test_project"
+                assert result.server_name == _get_project_mcp_server_name(test_project.id, test_project.name)
                 assert result.existing_config is None
                 assert result.conflict_message == ""
 
