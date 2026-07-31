@@ -11,11 +11,20 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Named environment configuration compatible with Python SDK langflow-environments.toml files. */
+/**
+ * Loader for named {@code langflow-environments.toml} configurations.
+ *
+ * <p>Lookup order matches the Python SDK: explicit path, the
+ * {@value #FILE_ENV} environment variable, the working directory, then the
+ * user configuration directory. API keys may be read indirectly with
+ * {@code api_key_env} to avoid storing credentials in source control.</p>
+ */
 public final class Environments {
+    /** Name of the environment variable that can point to the TOML file. */
     public static final String FILE_ENV = "LANGFLOW_ENVIRONMENTS_FILE";
     private Environments() {}
 
+    /** One resolved environment; {@link #toString()} masks the API key. */
     public record EnvironmentConfig(String name, String url, String apiKey) {
         @Override public String toString() {
             String masked = apiKey == null ? null : apiKey.substring(0, Math.min(4, apiKey.length())) + "...";
@@ -23,8 +32,10 @@ public final class Environments {
         }
     }
 
+    /** Loads every environment from the first configuration file found. */
     public static Map<String, EnvironmentConfig> load() { return load(null); }
 
+    /** Loads every environment, giving an explicit file highest priority. */
     public static Map<String, EnvironmentConfig> load(Path explicitFile) {
         Path file = findFile(explicitFile);
         Parsed parsed = parse(file);
@@ -44,8 +55,10 @@ public final class Environments {
         return Map.copyOf(result);
     }
 
+    /** Resolves a named environment from the standard configuration lookup. */
     public static EnvironmentConfig get(String name) { return get(name, null); }
 
+    /** Resolves a named environment, or the configured default when name is null. */
     public static EnvironmentConfig get(String name, Path explicitFile) {
         Path file = findFile(explicitFile);
         Parsed parsed = parse(file);
@@ -59,8 +72,10 @@ public final class Environments {
         return config;
     }
 
+    /** Creates a v1 client for a named environment with a 60-second timeout. */
     public static LangflowClient client(String name) { return client(name, null, Duration.ofSeconds(60)); }
 
+    /** Creates a v1 client using an environment and explicit timeout. */
     public static LangflowClient client(String name, Path file, Duration timeout) {
         EnvironmentConfig config = get(name, file);
         return LangflowClient.builder(config.url()).apiKey(config.apiKey()).timeout(timeout).build();

@@ -8,15 +8,29 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
 
-/** Request and response types for the native Langflow v2 Workflow API. */
+/**
+ * Request and response types for the native Langflow v2 Workflow API.
+ *
+ * <p>The nested records intentionally mirror wire field names through Jackson
+ * annotations while exposing idiomatic camelCase Java accessors.</p>
+ */
 public final class V2Models {
     private V2Models() {}
 
+    /** Durable workflow lifecycle states reported by the server. */
     public enum JobStatus {queued, in_progress, completed, failed, cancelled, timed_out, suspended}
+    /** Requested execution mode. Stream responses must be consumed through SSE. */
     public enum WorkflowMode {sync, stream, background}
+    /** Explains why the aggregated primary text output is present or absent. */
     public enum OutputReason {single, multiple, none, non_string, failed}
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    /**
+     * Native v2 workflow request.
+     *
+     * <p>Component tweaks are temporary; data can override the saved canvas;
+     * idempotencyKey deduplicates background submissions.</p>
+     */
     public record WorkflowRequest(
             @JsonProperty("flow_id") String flowId,
             @JsonProperty("input_value") String inputValue,
@@ -43,14 +57,17 @@ public final class V2Models {
             globals = globals == null ? Map.of() : Map.copyOf(globals);
         }
 
+        /** Builds a minimal synchronous request using the langflow stream protocol default. */
         public static WorkflowRequest synchronous(String flowId, String inputValue) {
             return create(flowId, inputValue, WorkflowMode.sync);
         }
 
+        /** Builds a minimal durable background request. */
         public static WorkflowRequest background(String flowId, String inputValue) {
             return create(flowId, inputValue, WorkflowMode.background);
         }
 
+        /** Builds a minimal SSE request. */
         public static WorkflowRequest streaming(String flowId, String inputValue) {
             return create(flowId, inputValue, WorkflowMode.stream);
         }
@@ -61,7 +78,12 @@ public final class V2Models {
         }
     }
 
-    /** Restricted request body accepted by the unauthenticated public-flow streaming endpoint. */
+    /**
+     * Restricted body for unauthenticated public-flow streaming.
+     *
+     * <p>It deliberately excludes tweaks and live-canvas data to preserve the
+     * backend's public execution security boundary.</p>
+     */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record PublicWorkflowRequest(
             @JsonProperty("flow_id") String flowId,
@@ -88,9 +110,11 @@ public final class V2Models {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    /** Structured workflow error with an optional machine-readable code and details. */
     public record ErrorDetail(String error, String code, Map<String, Object> details) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    /** Output from one stable component ID in the response outputs map. */
     public record ComponentOutput(
             String type,
             JobStatus status,
@@ -99,11 +123,14 @@ public final class V2Models {
             Map<String, Object> metadata) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    /** Aggregated primary answer and the reason used to select it. */
     public record WorkflowOutput(OutputReason reason, String text, String source) {}
 
+    /** Discriminated parent for immediate responses and durable job handles. */
     public sealed interface WorkflowResult permits WorkflowResponse, WorkflowJob {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    /** Completed, failed, or suspended workflow response with component outputs. */
     public record WorkflowResponse(
             @JsonProperty("flow_id") String flowId,
             @JsonProperty("session_id") String sessionId,
@@ -130,6 +157,7 @@ public final class V2Models {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    /** Durable background job handle returned while work is queued or running. */
     public record WorkflowJob(
             @JsonProperty("job_id") String jobId,
             @JsonProperty("flow_id") String flowId,
@@ -146,23 +174,28 @@ public final class V2Models {
         public boolean isSuspended() { return status == JobStatus.suspended; }
     }
 
+    /** Request body used to stop a durable job. */
     public record WorkflowStopRequest(@JsonProperty("job_id") String jobId) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    /** Confirmation returned after requesting job cancellation. */
     public record WorkflowStopResponse(@JsonProperty("job_id") String jobId, String message) {}
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    /** Human-in-the-loop decision submitted for a specific pending request ID. */
     public record WorkflowResumeRequest(
             @JsonProperty("request_id") String requestId,
             Map<String, Object> decision) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    /** Server acknowledgement that a suspended job is resuming. */
     public record WorkflowResumeResponse(
             @JsonProperty("job_id") String jobId,
             String status,
             String message) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    /** Pending human-input request returned by the per-flow pending endpoint. */
     public record PendingWorkflow(
             @JsonProperty("job_id") String jobId,
             @JsonProperty("flow_id") String flowId,
@@ -174,6 +207,11 @@ public final class V2Models {
             List<Map<String, Object>> options,
             @JsonProperty("allowed_decisions") List<String> allowedDecisions) {}
 
-    /** Generic SSE frame for both initial streaming runs and background event reattachment. */
+    /**
+     * Generic SSE frame for initial execution and durable event reattachment.
+     *
+     * <p>The data node is intentionally untyped because langflow and AG-UI
+     * protocols emit different event shapes.</p>
+     */
     public record StreamEvent(String id, String event, JsonNode data) {}
 }

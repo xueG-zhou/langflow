@@ -22,6 +22,15 @@ public final class DebugLoggingInterceptor implements Interceptor {
     private static final long MAX_LOG_BODY_BYTES = 1024L * 1024L;
     private static final String REDACTED = "***";
 
+    /** Creates an interceptor using the SDK's built-in secret redaction rules. */
+    public DebugLoggingInterceptor() {}
+
+    /**
+     * Logs request/response metadata at DEBUG without consuming response bodies.
+     *
+     * <p>API keys and common secret JSON fields are redacted. SSE bodies are
+     * never previewed because doing so would consume the live stream.</p>
+     */
     @Override
     public Response intercept(Chain chain) throws IOException {
         if (!LOG.isDebugEnabled()) return chain.proceed(chain.request());

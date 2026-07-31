@@ -22,6 +22,14 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Shared OkHttp/Jackson transport used by the versioned clients.
+ *
+ * <p>This class centralizes URL resolution, API-key propagation, JSON
+ * serialization, timeout configuration, debug logging, and conversion of HTTP
+ * status codes into typed SDK exceptions. Applications normally interact with
+ * the v1 or v2 client instead of constructing this class directly.</p>
+ */
 public final class HttpTransport {
     static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     static final MediaType OCTET_STREAM = MediaType.get("application/octet-stream");
@@ -30,6 +38,13 @@ public final class HttpTransport {
     private final String apiKey;
     private final OkHttpClient client;
 
+    /**
+     * Creates a transport with independent OkHttp timeout controls.
+     *
+     * @param baseUrl Langflow service root, for example {@code http://localhost:7860}
+     * @param apiKey optional value sent in the {@code x-api-key} header
+     * @param client optional application-provided OkHttp client; it is cloned before use
+     */
     public HttpTransport(String baseUrl, String apiKey, Duration connectTimeout, Duration readTimeout,
                          Duration writeTimeout, Duration callTimeout, OkHttpClient client) {
         this.baseUrl = HttpUrl.get(baseUrl.replaceAll("/+$", "") + "/");
@@ -43,8 +58,15 @@ public final class HttpTransport {
                 .build();
     }
 
+    /** Returns the configured OkHttp client used for normal and SSE calls. */
     public OkHttpClient client() { return client; }
 
+    /**
+     * Builds an authenticated request without executing it.
+     *
+     * <p>Used by the SSE clients because OkHttp's EventSource API owns request
+     * execution. Non-null bodies are JSON encoded.</p>
+     */
     public Request request(String method, String path, Object body, String accept) {
         try {
             RequestBody requestBody = body == null ? null : RequestBody.create(json.writeValueAsBytes(body), JSON);
@@ -57,6 +79,7 @@ public final class HttpTransport {
         }
     }
 
+    /** Executes a JSON request and deserializes a concrete response type. */
     public <T> T send(String method, String path, Object body, Class<T> type) {
         String response = execute(method, path, body).body();
         if (type == Void.class || response.isBlank()) return null;
@@ -64,6 +87,12 @@ public final class HttpTransport {
         catch (Exception e) { throw new LangflowException("Invalid Langflow response", e); }
     }
 
+    /**
+     * Executes a JSON request asynchronously.
+     *
+     * <p>Cancelling the returned future also cancels the underlying OkHttp
+     * call, rather than only changing the future's state.</p>
+     */
     public <T> CompletableFuture<T> sendAsync(String method, String path, Object body, Class<T> type) {
         Call call = client.newCall(request(method, path, body, "application/json"));
         var future = new CallFuture<T>(call);
@@ -91,16 +120,19 @@ public final class HttpTransport {
         return future;
     }
 
+    /** Executes a JSON request whose response contains generic collection types. */
     public <T> T send(String method, String path, Object body, TypeReference<T> type) {
         try { return json.readValue(execute(method, path, body).body(), type); }
         catch (LangflowException e) { throw e; }
         catch (Exception e) { throw new LangflowException("Invalid Langflow response", e); }
     }
 
+    /** Executes a request and exposes both the HTTP status and raw body. */
     public ResponseData sendWithStatus(String method, String path, Object body) {
         return execute(method, path, body);
     }
 
+    /** Downloads an opaque binary response, used for project ZIP exports. */
     public byte[] download(String path) {
         try (Response response = client.newCall(request("GET", path, null, "application/octet-stream")).execute()) {
             byte[] bytes = response.body() == null ? new byte[0] : response.body().bytes();
@@ -115,6 +147,7 @@ public final class HttpTransport {
         }
     }
 
+    /** Uploads an {@code application/octet-stream} payload and parses its JSON response. */
     public <T> T upload(String path, byte[] bytes, TypeReference<T> type) {
         RequestBody body = RequestBody.create(bytes, OCTET_STREAM);
         var builder = new Request.Builder().url(resolve(path)).header("Accept", "application/json")
@@ -140,6 +173,7 @@ public final class HttpTransport {
         catch (IOException e) { throw ioError(e); }
     }
 
+    /** Immutable successful HTTP response used when status codes carry semantics such as 201. */
     public record ResponseData(int statusCode, String body) {}
 
     private LangflowException ioError(IOException error) {
@@ -165,6 +199,11 @@ public final class HttpTransport {
         return resolved;
     }
 
+    /**
+     * Encodes non-null values as URL query parameters.
+     *
+     * @param params insertion-ordered parameters when deterministic output is desired
+     */
     public static String query(Map<String, ?> params) {
         var builder = new StringBuilder();
         params.forEach((key, value) -> {

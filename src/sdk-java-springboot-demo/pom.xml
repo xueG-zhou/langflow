@@ -28,7 +28,16 @@
         <dependency>
             <groupId>org.langflow</groupId>
             <artifactId>langflow-java-sdk</artifactId>
-            <version>0.1.0-SNAPSHOT</version>
+            <version>0.3.0-SNAPSHOT</version>
+        </dependency>
+        <!--
+          SSE is part of the SDK's public v1/v2 streaming API. Keep it explicit
+          in the demo so IDE/Spring Boot dependency resolution cannot omit it.
+        -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp-sse</artifactId>
+            <version>4.12.0</version>
         </dependency>
     </dependencies>
 

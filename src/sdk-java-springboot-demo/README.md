@@ -19,6 +19,12 @@ export LANGFLOW_API_KEY="your-api-key"
 mvn spring-boot:run
 ```
 
+Demo 在应用侧的 `LangflowConfiguration` 中注册以下 Bean，SDK 本身不依赖 Spring Boot：
+
+- `org.langflow.sdk.v1.LangflowClient`
+- `org.langflow.sdk.v1.AsyncLangflowClient`
+- `org.langflow.sdk.v2.LangflowClient`
+
 默认连接 `http://localhost:7860`，Demo 监听 `8080`。所有配置均可通过 `application.yml` 中列出的环境变量覆盖。
 
 ## v1
@@ -40,7 +46,7 @@ curl -N 'http://localhost:8080/demo/v1/stream?flowId=your-flow-id&inputValue=你
 ```bash
 curl -X POST http://localhost:8080/demo/v2/run \
   -H 'Content-Type: application/json' \
-  -d '{"flowId":"your-flow-id","background":false,"inputs":{"ChatInput-1.input_value":"你好"}}'
+  -d '{"flowId":"your-flow-id","background":false,"inputValue":"你好"}'
 ```
 
 后台运行时将 `background` 改成 `true`，然后查询或停止：
@@ -50,4 +56,4 @@ curl 'http://localhost:8080/demo/v2/status?jobId=your-job-id'
 curl -X POST http://localhost:8080/demo/v2/stop -H 'Content-Type: application/json' -d '{"jobId":"your-job-id"}'
 ```
 
-v2 需要 Langflow 服务端开启 Developer API。组件输入键必须使用真实的 `组件ID.参数名`。
+v2 需要 Langflow 服务端开启 Developer API。组件覆盖参数通过 `tweaks` 传入，并使用真实组件 ID。

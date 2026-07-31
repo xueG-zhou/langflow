@@ -9,7 +9,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/** A non-blocking flow run with status, cancellation, and bounded waiting helpers. */
+/**
+ * Handle for one non-blocking v1 flow execution.
+ *
+ * <p>The handle is safe to inspect from multiple threads. Cancellation is
+ * propagated to the underlying OkHttp call. A wait timeout does not cancel the
+ * run, allowing the caller to wait again or observe the future later.</p>
+ */
 public final class BackgroundJob {
     private final CompletableFuture<RunResponse> future;
 
@@ -17,15 +23,25 @@ public final class BackgroundJob {
         this.future = future;
     }
 
+    /** Returns {@code true} while the HTTP request has not reached a terminal state. */
     public boolean isRunning() { return !future.isDone(); }
+    /** Returns {@code true} only after a successful response has been decoded. */
     public boolean isCompleted() { return future.isDone() && !future.isCompletedExceptionally() && !future.isCancelled(); }
+    /** Returns {@code true} after cancellation or exceptional completion. */
     public boolean isFailed() { return future.isCompletedExceptionally() || future.isCancelled(); }
+    /** Exposes the underlying future for composition with application async pipelines. */
     public CompletableFuture<RunResponse> future() { return future; }
 
+    /** Blocks indefinitely until the run completes or fails. */
     public RunResponse waitForCompletion() {
         return join();
     }
 
+    /**
+     * Waits up to the supplied duration without cancelling the run on timeout.
+     *
+     * @throws org.langflow.sdk.TimeoutException when the duration elapses
+     */
     public RunResponse waitForCompletion(Duration timeout) {
         if (timeout == null) return join();
         try {
@@ -41,6 +57,7 @@ public final class BackgroundJob {
         }
     }
 
+    /** Cancels a running request; returns false when it was already terminal. */
     public boolean cancel() { return !future.isDone() && future.cancel(true); }
 
     private RunResponse join() {

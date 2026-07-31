@@ -14,7 +14,13 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeMap;
 
-/** Git-friendly flow normalization equivalent to the Python SDK serialization helpers. */
+/**
+ * Git-friendly flow normalization equivalent to the Python SDK helpers.
+ *
+ * <p>Normalization operates on deep copies: callers retain the original JSON.
+ * Defaults remove instance-specific fields and transient canvas state, clear
+ * secret template values, and recursively sort object keys.</p>
+ */
 public final class FlowSerialization {
     private static final Set<String> VOLATILE_TOP_LEVEL =
             Set.of("updated_at", "created_at", "user_id", "folder_id", "access_type", "gradient");
@@ -23,10 +29,12 @@ public final class FlowSerialization {
 
     private FlowSerialization() {}
 
+    /** Normalizes a flow using {@link Options#defaults()}. */
     public static ObjectNode normalizeFlow(JsonNode flow) {
         return normalizeFlow(flow, Options.defaults());
     }
 
+    /** Normalizes a flow using explicit behavior switches. */
     public static ObjectNode normalizeFlow(JsonNode flow, Options options) {
         if (flow == null || !flow.isObject()) throw new IllegalArgumentException("Flow must be a JSON object");
         if (options == null) throw new IllegalArgumentException("options is required");
@@ -60,10 +68,12 @@ public final class FlowSerialization {
         return options.sortKeys() ? (ObjectNode) sortRecursively(result) : result;
     }
 
+    /** Reads and normalizes a UTF-8 JSON file with default options. */
     public static ObjectNode normalizeFlowFile(Path path) {
         return normalizeFlowFile(path, Options.defaults());
     }
 
+    /** Reads and normalizes a UTF-8 JSON file with explicit options. */
     public static ObjectNode normalizeFlowFile(Path path, Options options) {
         try {
             return normalizeFlow(JSON.readTree(path.toFile()), options);
@@ -72,6 +82,7 @@ public final class FlowSerialization {
         }
     }
 
+    /** Serializes normalized JSON with two-space indentation and a final newline. */
     public static String flowToJson(JsonNode flow) {
         try {
             return JSON.writeValueAsString(flow) + "\n";
@@ -80,6 +91,7 @@ public final class FlowSerialization {
         }
     }
 
+    /** Creates parent directories and writes a UTF-8 flow JSON file. */
     public static void write(JsonNode flow, Path output) {
         try {
             Path parent = output.toAbsolutePath().getParent();
@@ -106,13 +118,19 @@ public final class FlowSerialization {
         return node.deepCopy();
     }
 
-    /** Options matching Python SDK normalize_flow keyword arguments. */
+    /**
+     * Options matching Python SDK {@code normalize_flow} keyword arguments.
+     *
+     * @param codeAsLines converts code strings to line arrays for readable diffs
+     * @param stripNodeVolatile removes selection/dragging/absolute-position state
+     */
     public record Options(
             boolean stripVolatile,
             boolean stripSecrets,
             boolean sortKeys,
             boolean codeAsLines,
             boolean stripNodeVolatile) {
+        /** Returns Python-compatible defaults. */
         public static Options defaults() { return new Options(true, true, true, false, true); }
     }
 }

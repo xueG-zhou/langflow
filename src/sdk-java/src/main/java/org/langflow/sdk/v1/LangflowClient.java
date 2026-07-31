@@ -29,7 +29,15 @@ import java.util.concurrent.SubmissionPublisher;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-/** Thread-safe client for Langflow API v1. */
+/**
+ * Thread-safe synchronous client for the Langflow v1 REST API.
+ *
+ * <p>The client covers flow and project CRUD, synchronous and background
+ * execution, SSE streaming, project ZIP import/export, and Git-friendly local
+ * flow synchronization. Construct it once and reuse it as a singleton (for
+ * example, a Spring Bean). Call {@link #close()} when the application shuts
+ * down so active calls and streams are cancelled.</p>
+ */
 public final class LangflowClient implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger("org.langflow.sdk.sse");
     private static final int MAX_ZIP_ENTRIES = 500;
@@ -41,11 +49,22 @@ public final class LangflowClient implements AutoCloseable {
                 builder.readTimeout, builder.writeTimeout, builder.callTimeout, builder.httpClient);
     }
 
+    /** Creates a builder from a complete service URL. */
     public static Builder builder(String baseUrl) { return new Builder(baseUrl); }
+    /** Creates a builder from a host and port; the scheme defaults to HTTP. */
     public static Builder builder(String host, int port) { return new Builder(host, port); }
 
+    /** Lists the first 50 flows using the API's default filters. */
     public List<Flow> listFlows() { return listFlows(null, false, false, false, false, 1, 50); }
 
+    /**
+     * Lists flows with the same filters exposed by {@code GET /api/v1/flows/}.
+     *
+     * @param folderId optional project/folder constraint
+     * @param getAll asks the server to bypass normal pagination behavior
+     * @param page one-based page number
+     * @param size requested page size
+     */
     public List<Flow> listFlows(UUID folderId, boolean removeExamples, boolean componentsOnly,
                                 boolean getAll, boolean headerFlows, int page, int size) {
         Map<String, Object> params = new LinkedHashMap<>();
@@ -55,9 +74,17 @@ public final class LangflowClient implements AutoCloseable {
         return http.send("GET", "/api/v1/flows/" + HttpTransport.query(params), null, new TypeReference<>() {});
     }
 
+    /** Fetches one flow by UUID. */
     public Flow getFlow(String flowId) { return http.send("GET", "/api/v1/flows/" + flowId, null, Flow.class); }
+    /** Creates a new flow and returns its server representation. */
     public Flow createFlow(FlowCreate flow) { return http.send("POST", "/api/v1/flows/", flow, Flow.class); }
+    /** Partially updates a flow; null fields are omitted from the JSON body. */
     public Flow updateFlow(String flowId, FlowUpdate update) { return http.send("PATCH", "/api/v1/flows/" + flowId, update, Flow.class); }
+    /**
+     * Creates or replaces a flow using a stable ID.
+     *
+     * @return the flow and whether the server responded with HTTP 201 (created)
+     */
     public UpsertResult upsertFlow(String flowId, FlowCreate flow) {
         var response = http.sendWithStatus("PUT", "/api/v1/flows/" + flowId, flow);
         try {
@@ -66,19 +93,30 @@ public final class LangflowClient implements AutoCloseable {
             throw new LangflowException("Invalid Langflow response", e);
         }
     }
+    /** Permanently deletes the specified flow. */
     public void deleteFlow(String flowId) { http.send("DELETE", "/api/v1/flows/" + flowId, null, Void.class); }
+    /** Executes a flow UUID or named endpoint and returns the complete v1 response. */
     public RunResponse runFlow(String idOrEndpoint, RunRequest request) {
         return http.send("POST", "/api/v1/run/" + idOrEndpoint, request, RunResponse.class);
     }
+    /** Convenience execution method using chat input/output defaults. */
     public RunResponse run(String idOrEndpoint, String inputValue) { return runFlow(idOrEndpoint, new RunRequest(inputValue)); }
+    /** Starts a cancellable asynchronous run using chat input/output defaults. */
     public BackgroundJob runBackground(String idOrEndpoint, String inputValue) {
         return runBackground(idOrEndpoint, new RunRequest(inputValue));
     }
+    /** Starts a cancellable asynchronous run while preserving every request option. */
     public BackgroundJob runBackground(String idOrEndpoint, RunRequest request) {
         return new BackgroundJob(http.sendAsync("POST", "/api/v1/run/" + idOrEndpoint, request, RunResponse.class));
     }
 
-    /** Starts an OkHttp SSE connection. Cancelling the subscription closes its EventSource. */
+    /**
+     * Starts a v1 Server-Sent Events execution.
+     *
+     * <p>The method forces {@code stream=true} regardless of the supplied
+     * request value. Subscribers must request demand according to the JDK Flow
+     * contract. Cancelling the subscription closes the underlying EventSource.</p>
+     */
     public java.util.concurrent.Flow.Publisher<StreamChunk> stream(String idOrEndpoint, RunRequest request) {
         var publisher = new SsePublisher();
         var streamingRequest = new RunRequest(request.inputValue(), request.inputType(), request.outputType(), request.tweaks(), true);
@@ -108,20 +146,37 @@ public final class LangflowClient implements AutoCloseable {
         return publisher;
     }
 
+    /** Lists all projects/folders visible to the current API key. */
     public List<Project> listProjects() { return http.send("GET", "/api/v1/projects/", null, new TypeReference<>() {}); }
+    /** Fetches a project together with its flows. */
     public ProjectWithFlows getProject(String id) { return http.send("GET", "/api/v1/projects/" + id, null, ProjectWithFlows.class); }
+    /** Creates a project/folder. */
     public Project createProject(ProjectCreate project) { return http.send("POST", "/api/v1/projects/", project, Project.class); }
+    /** Updates project metadata. */
     public Project updateProject(String id, ProjectUpdate update) { return http.send("PATCH", "/api/v1/projects/" + id, update, Project.class); }
+    /** Deletes a project/folder. */
     public void deleteProject(String id) { http.send("DELETE", "/api/v1/projects/" + id, null, Void.class); }
 
+    /**
+     * Downloads and safely extracts a project ZIP in memory.
+     *
+     * <p>Archives are limited to 500 entries and 50 MiB per entry to reduce
+     * ZIP-bomb risk. Oversized entries are skipped.</p>
+     */
     public Map<String, byte[]> downloadProject(String id) {
         return extractProjectArchive(http.download("/api/v1/projects/download/" + id));
     }
 
+    /** Uploads a project ZIP and returns the flows created by the server. */
     public List<Flow> uploadProject(byte[] zipBytes) {
         return http.upload("/api/v1/projects/upload/", zipBytes, new TypeReference<>() {});
     }
 
+    /**
+     * Reads a local flow JSON file and upserts it by its embedded {@code id}.
+     *
+     * <p>The ID is placed in the URL and removed from the request body.</p>
+     */
     public UpsertResult push(Path path) {
         try {
             JsonNode raw = http.json.readTree(path.toFile());
@@ -137,14 +192,17 @@ public final class LangflowClient implements AutoCloseable {
         }
     }
 
+    /** Downloads a flow and returns its normalized, Git-friendly JSON. */
     public JsonNode pull(String flowId) { return pull(flowId, null); }
 
+    /** Downloads and normalizes a flow, optionally writing it to disk. */
     public JsonNode pull(String flowId, Path output) {
         JsonNode normalized = FlowSerialization.normalizeFlow(http.json.valueToTree(getFlow(flowId)));
         if (output != null) FlowSerialization.write(normalized, output);
         return normalized;
     }
 
+    /** Pushes every top-level {@code *.json} file in lexical path order. */
     public List<UpsertResult> pushProject(Path directory) {
         try (var paths = Files.list(directory)) {
             return paths.filter(path -> path.getFileName().toString().endsWith(".json"))
@@ -154,6 +212,11 @@ public final class LangflowClient implements AutoCloseable {
         }
     }
 
+    /**
+     * Downloads a project and writes each normalized flow as {@code <name>.json}.
+     *
+     * @return flow-name to written-path mapping
+     */
     public Map<String, Path> pullProject(String projectId, Path outputDirectory) {
         try {
             Files.createDirectories(outputDirectory);
@@ -195,8 +258,10 @@ public final class LangflowClient implements AutoCloseable {
         return leaf.endsWith(".json") ? leaf.substring(0, leaf.length() - 5) : leaf;
     }
 
+    /** Cancels all calls owned by this client. Safe to invoke during application shutdown. */
     @Override public void close() { http.client().dispatcher().cancelAll(); }
 
+    /** Fluent configuration for URL, credentials, timeouts, and custom OkHttp integration. */
     public static final class Builder {
         private String baseUrl;
         private String scheme = "http";
@@ -210,10 +275,15 @@ public final class LangflowClient implements AutoCloseable {
         private OkHttpClient httpClient;
         private Builder(String baseUrl) { this.baseUrl = baseUrl; }
         private Builder(String host, int port) { this.host = host; this.port = validatePort(port); }
+        /** Selects {@code http} or {@code https} when using host/port construction. */
         public Builder scheme(String value) { this.scheme = requireText(value, "scheme"); return this; }
+        /** Replaces the host and switches away from a previously supplied full base URL. */
         public Builder host(String value) { this.host = requireText(value, "host"); this.baseUrl = null; return this; }
+        /** Sets and validates a TCP port in the 1-65535 range. */
         public Builder port(int value) { this.port = validatePort(value); this.baseUrl = null; return this; }
+        /** Sets the optional Langflow API key. Blank/null means no authentication header. */
         public Builder apiKey(String value) { this.apiKey = value; return this; }
+        /** Applies one positive duration to connect, read, write, and whole-call timeouts. */
         public Builder timeout(Duration value) {
             Duration timeout = requirePositive(value, "timeout");
             this.connectTimeout = timeout; this.readTimeout = timeout;
@@ -224,7 +294,9 @@ public final class LangflowClient implements AutoCloseable {
         public Builder readTimeout(Duration value) { this.readTimeout = requirePositive(value, "readTimeout"); return this; }
         public Builder writeTimeout(Duration value) { this.writeTimeout = requirePositive(value, "writeTimeout"); return this; }
         public Builder callTimeout(Duration value) { this.callTimeout = requirePositive(value, "callTimeout"); return this; }
+        /** Supplies an existing OkHttp client whose dispatcher/pool can be shared. */
         public Builder httpClient(OkHttpClient value) { this.httpClient = value; return this; }
+        /** Validates the accumulated settings and creates a reusable client. */
         public LangflowClient build() { return new LangflowClient(this); }
         private String baseUrl() {
             if (baseUrl != null && !baseUrl.isBlank()) return baseUrl;
