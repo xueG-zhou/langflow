@@ -144,7 +144,7 @@ const DialogContent = React.forwardRef<
           {children}
           {!hideCloseButton && (
             <ShadTooltip
-              styleClasses="z-50"
+              styleClasses="z-50 bg-[#79BBFF]"
               content="Close"
               side="bottom"
               avoidCollisions

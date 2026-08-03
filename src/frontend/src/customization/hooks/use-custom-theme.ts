@@ -28,9 +28,9 @@ const useTheme = () => {
       setDark(true);
       setSystemTheme(false);
     } else {
-      // Default to system theme
-      setSystemTheme(true);
-      handleSystemTheme();
+      // Default to light theme
+      setDark(false);
+      setSystemTheme(false);
     }
   }, []);
 

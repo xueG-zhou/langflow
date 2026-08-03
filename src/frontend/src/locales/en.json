@@ -255,7 +255,7 @@
   "misc.timeoutError": "Please wait a few moments while the server processes your request.",
   "misc.timeoutErrorDesc": "Server is busy.",
   "misc.fsErrorText": "Please ensure your file has one of the following extensions:",
-  "auth.loginTitle": "Sign in to Langflow",
+  "auth.loginTitle": "Sign in to AIFlow",
   "auth.signupTitle": "Sign up for Langflow",
   "auth.usernameLabel": "Username",
   "auth.usernamePlaceholder": "Username",

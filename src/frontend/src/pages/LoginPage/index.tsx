@@ -2,7 +2,6 @@ import * as Form from "@radix-ui/react-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
-import LangflowLogo from "@/assets/LangflowLogo.svg?react";
 import ShadTooltip from "@/components/common/shadTooltipComponent";
 import { extractApiErrorMessage } from "@/controllers/API/helpers/extract-api-error-message";
 import { useLoginUser } from "@/controllers/API/queries/auth";
@@ -23,6 +22,8 @@ import type {
   inputHandlerEventType,
   loginInputStateType,
 } from "../../types/components";
+import bgImage from "@/assets/bg-ai-flow.svg";
+import { Logo } from "@/components/common/logo";
 
 export default function LoginPage(): JSX.Element {
   const [inputState, setInputState] =
@@ -104,15 +105,13 @@ export default function LoginPage(): JSX.Element {
       }}
       className="h-screen w-full"
     >
-      <div className="flex h-full w-full flex-col items-center justify-center bg-muted">
+      <div className="flex h-full w-full flex-col items-center justify-center bg-cover-[cover] bg-center"
+        style={{ backgroundImage: `url(${bgImage})` }}>
         <div className="flex w-full max-w-xs flex-col items-center justify-center gap-2">
-          <LangflowLogo
+          <Logo
             title={t("common.langflowLogo")}
-            className="mb-4 h-10 w-10 scale-[1.5]"
+            className="mb-4  w-30"
           />
-          <span className="mb-6 text-2xl font-semibold text-primary text-center">
-            {t("auth.loginTitle")}
-          </span>
           <div className="mb-3 w-full">
             <Form.Field name="username">
               <label
@@ -205,7 +204,7 @@ export default function LoginPage(): JSX.Element {
               </Button>
             </Form.Submit>
           </div>
-          <div className="w-full">
+          {false && <div className="w-full">
             <CustomLink to="/signup">
               <ShadTooltip
                 content={`${t("auth.noAccount")} ${t("auth.signUpLink")}`}
@@ -222,7 +221,7 @@ export default function LoginPage(): JSX.Element {
                 </Button>
               </ShadTooltip>
             </CustomLink>
-          </div>
+          </div>}
         </div>
       </div>
     </Form.Root>

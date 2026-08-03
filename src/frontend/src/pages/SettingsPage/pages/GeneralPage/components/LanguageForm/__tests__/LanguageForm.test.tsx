@@ -123,14 +123,16 @@ describe("LanguageFormComponent", () => {
     });
   });
 
-  it("shows recommended label for English option", () => {
+  it("shows recommended label for Chinese option", () => {
     render(<LanguageFormComponent />);
-    const enOption = screen.getByRole("option", { name: /English/i });
-    expect(enOption.textContent).toContain("settings.languageRecommended");
+    const zhOption = screen.getByRole("option", { name: /中文/ });
+    expect(zhOption.textContent).toContain("settings.languageRecommended");
   });
 
-  it("does not show recommended label for non-English options", () => {
+  it("does not show recommended label for non-Chinese options", () => {
     render(<LanguageFormComponent />);
+    const enOption = screen.getByRole("option", { name: /English/i });
+    expect(enOption.textContent).not.toContain("settings.languageRecommended");
     const frOption = screen.getByRole("option", { name: /Français/i });
     expect(frOption.textContent).not.toContain("settings.languageRecommended");
   });

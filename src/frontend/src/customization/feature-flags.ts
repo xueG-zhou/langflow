@@ -28,3 +28,7 @@ export const ENABLE_FETCH_CREDENTIALS = false;
 // extension id to send to /api/v1/extensions/{id}/bundles/{name}/reload.
 export const ENABLE_EXTENSION_RELOAD =
   import.meta.env.LANGFLOW_EXTENSION_RELOAD_ENABLED === "true";
+
+// true = 所有引用的顶部换成自定义顶部（去掉 GitHub/Discord 外链按钮）；
+// false = 回退默认顶部（带外链按钮）
+export const ENABLE_CUSTOM_APP_HEADER = true;
