@@ -126,13 +126,17 @@ async def test_get_flows_with_malformed_bearer_token_returns_401(client: AsyncCl
 
 
 async def test_read_flow(client: AsyncClient, logged_in_headers):
+    graph_data = {
+        "nodes": [{"id": "large-node", "description": "repetitive graph content " * 200}],
+        "edges": [],
+    }
     basic_case = {
         "name": "string",
         "description": "string",
         "icon": "string",
         "icon_bg_color": "#ff00ff",
         "gradient": "string",
-        "data": {},
+        "data": graph_data,
         "is_component": False,
         "webhook": False,
         "endpoint_name": "string",
@@ -145,6 +149,9 @@ async def test_read_flow(client: AsyncClient, logged_in_headers):
     result = response.json()
 
     assert response.status_code == status.HTTP_200_OK
+    assert response.headers["content-encoding"] == "gzip"
+    assert response.headers["cache-control"] == "private, no-cache"
+    assert response.headers["etag"]
     assert isinstance(result, dict), "The result must be a dictionary"
     assert "data" in result, "The result must have a 'data' key"
     assert "description" in result, "The result must have a 'description' key"
@@ -160,6 +167,14 @@ async def test_read_flow(client: AsyncClient, logged_in_headers):
     assert "updated_at" in result, "The result must have a 'updated_at' key"
     assert "user_id" in result, "The result must have a 'user_id' key"
     assert "webhook" in result, "The result must have a 'webhook' key"
+    assert result["data"] == graph_data
+
+    not_modified_response = await client.get(
+        f"api/v1/flows/{id_}",
+        headers={**logged_in_headers, "If-None-Match": response.headers["etag"]},
+    )
+    assert not_modified_response.status_code == status.HTTP_304_NOT_MODIFIED
+    assert not not_modified_response.content
 
 
 async def test_update_flow(client: AsyncClient, logged_in_headers):

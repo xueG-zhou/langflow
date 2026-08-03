@@ -8,7 +8,7 @@ from typing import Annotated
 from uuid import UUID
 
 import orjson
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlmodel import apaginate
@@ -30,6 +30,7 @@ from langflow.api.utils.zip_utils import extract_flows_from_zip
 from langflow.api.v1.authz_route_dependencies import (
     AuthorizedDeleteFlow,
     AuthorizedReadFlow,
+    AuthorizedReadFlowMetadata,
     AuthorizedWriteFlow,
     RequireFlowCreate,
 )
@@ -266,10 +267,24 @@ async def read_flows(
 async def read_flow(
     *,
     flow_id: UUID,  # noqa: ARG001
-    flow: AuthorizedReadFlow,
+    flow: AuthorizedReadFlowMetadata,
+    session: DbSessionReadOnly,
+    request: Request,
 ):
-    """Read a flow."""
-    return FlowRead.model_validate(flow, from_attributes=True)
+    """Read a flow, using conditional caching for unchanged graph JSON."""
+    version = flow.updated_at.isoformat() if flow.updated_at else "unversioned"
+    etag = f'W/"{flow.id}:{version}"'
+    cache_headers = {"ETag": etag, "Cache-Control": "private, no-cache"}
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=cache_headers)
+
+    await session.refresh(flow, attribute_names=["data"])
+    flow_read = FlowRead.model_validate(flow, from_attributes=True)
+    return Response(
+        content=orjson.dumps(flow_read.model_dump(mode="json")),
+        media_type="application/json",
+        headers=cache_headers,
+    )
 
 
 @router.get("/{flow_id}/note_translations", status_code=200)

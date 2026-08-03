@@ -1,6 +1,7 @@
 import asyncio
 import platform
 from asyncio.subprocess import create_subprocess_exec
+from base64 import b32encode
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -23,13 +24,8 @@ from langflow.services.deps import get_storage_service
 ALL_INTERFACES_HOST = "0.0.0.0"  # noqa: S104
 
 
-def _get_project_mcp_server_name(project_id: UUID, project_name: str) -> str:
-    """Return a stable MCP server name for a project.
-
-    Project display names may contain only characters that MCP name sanitization
-    removes, such as Chinese characters. Include part of the project UUID in the
-    fallback so those projects do not all collide on ``lf-unnamed``.
-    """
+def _get_legacy_project_mcp_server_name(project_id: UUID, project_name: str) -> str:
+    """Return the MCP server name used before project IDs were always included."""
     sanitized_name = sanitize_mcp_name(project_name)
     if sanitized_name == "unnamed" and project_name.strip().lower() != "unnamed":
         available_id_length = MAX_MCP_SERVER_NAME_LENGTH - len("lf-project_")
@@ -37,6 +33,18 @@ def _get_project_mcp_server_name(project_id: UUID, project_name: str) -> str:
 
     max_sanitized_length = MAX_MCP_SERVER_NAME_LENGTH - len("lf-")
     return f"lf-{sanitized_name[:max_sanitized_length]}"
+
+
+def _get_project_mcp_server_name(project_id: UUID, project_name: str) -> str:
+    """Return a stable, globally unique MCP server name for a project.
+
+    MCP names are limited to 30 characters, so a lowercase, unpadded Base32
+    encoding preserves all 128 bits of the project UUID in 26 characters.
+    The display name remains available in the server description.
+    """
+    del project_name
+    encoded_project_id = b32encode(project_id.bytes).decode("ascii").rstrip("=").lower()
+    return f"lf-{encoded_project_id}"
 
 
 class MCPServerValidationResult:
@@ -126,35 +134,42 @@ async def validate_mcp_server_for_project(
     Returns:
         MCPServerValidationResult with validation details
     """
-    # Generate server name that would be used for this project
+    # New names always include a project-ID suffix. Existing installations may
+    # still have the legacy display-name-only entry, so reuse it only when its
+    # endpoint proves that it belongs to this project.
     server_name = _get_project_mcp_server_name(project_id, project_name)
+    legacy_server_name = _get_legacy_project_mcp_server_name(project_id, project_name)
 
     try:
         existing_servers = await get_server_list(user, session, storage_service, settings_service)
+        mcp_servers = existing_servers.get("mcpServers", {})
 
-        if server_name not in existing_servers.get("mcpServers", {}):
-            # Server doesn't exist
+        if server_name in mcp_servers:
+            existing_server_config = mcp_servers[server_name]
+        elif legacy_server_name in mcp_servers:
+            legacy_server_config = mcp_servers[legacy_server_name]
+            legacy_urls = await extract_urls_from_strings(legacy_server_config.get("args", []))
+            if any(str(project_id) in url for url in legacy_urls):
+                server_name = legacy_server_name
+                existing_server_config = legacy_server_config
+            else:
+                # A different project owns the colliding legacy name. The new
+                # UUID-suffixed name is free, so creation can proceed safely.
+                return MCPServerValidationResult(
+                    project_id_matches=False,
+                    server_exists=False,
+                    server_name=server_name,
+                )
+        else:
             return MCPServerValidationResult(
                 project_id_matches=False,
                 server_exists=False,
                 server_name=server_name,
             )
 
-        # Server exists - check if project ID matches
-        existing_server_config = existing_servers["mcpServers"][server_name]
         existing_args = existing_server_config.get("args", [])
-        project_id_matches = False
-
-        if existing_args:
-            # SSE URL is typically the last argument
-            # TODO: Better way Required to check the postion of the SSE URL in the args
-            existing_sse_urls = await extract_urls_from_strings(existing_args)
-            for existing_sse_url in existing_sse_urls:
-                if str(project_id) in existing_sse_url:
-                    project_id_matches = True
-                    break
-        else:
-            project_id_matches = False
+        existing_urls = await extract_urls_from_strings(existing_args)
+        project_id_matches = any(str(project_id) in url for url in existing_urls)
 
         # Generate appropriate conflict message based on operation
         conflict_message = ""

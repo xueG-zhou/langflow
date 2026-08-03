@@ -11,6 +11,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.time.Duration;
+import java.nio.file.Files;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -60,5 +62,47 @@ class LangflowClientTest {
             assertEquals(server.getPort(), request.getRequestUrl().port());
             assertEquals("configured-key", request.getHeader("x-api-key"));
         }
+    }
+
+    @Test void reportsCreatedUpsertFromHttpStatus() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(201).setHeader("Content-Type", "application/json").setBody("""
+                {"id":"00000000-0000-0000-0000-000000000042","name":"created"}
+                """));
+        var result = client.upsertFlow("00000000-0000-0000-0000-000000000042",
+                new org.langflow.sdk.v1.model.V1Models.FlowCreate("created"));
+        assertTrue(result.created());
+    }
+
+    @Test void pushesFlowFilesWithoutSendingIdInBody() throws Exception {
+        server.enqueue(new MockResponse().setHeader("Content-Type", "application/json").setBody("""
+                {"id":"00000000-0000-0000-0000-000000000042","name":"pushed"}
+                """));
+        var file = Files.createTempFile("langflow-", ".json");
+        Files.writeString(file, """
+                {"id":"00000000-0000-0000-0000-000000000042","name":"pushed","data":{"nodes":[]}}
+                """);
+        client.push(file);
+        var request = server.takeRequest();
+        assertEquals("PUT", request.getMethod());
+        assertFalse(request.getBody().readUtf8().contains("\"id\""));
+        Files.deleteIfExists(file);
+    }
+
+    @Test void exposesPythonParityResponseHelpers() {
+        var output = new org.langflow.sdk.v1.model.V1Models.RunOutput(
+                Map.of(), Map.of(), java.util.List.of(Map.of("results", Map.of("text", "hello"))), null, null);
+        var response = new org.langflow.sdk.v1.model.V1Models.RunResponse("s1", java.util.List.of(output));
+        assertEquals("hello", response.getChatOutput());
+        assertEquals(java.util.List.of("hello"), response.getTextOutputs());
+        assertTrue(response.isCompleted());
+        assertFalse(response.isFailed());
+    }
+
+    @Test void backgroundCancellationCancelsTheUnderlyingCall() {
+        server.enqueue(new MockResponse().setBodyDelay(5, TimeUnit.SECONDS)
+                .setHeader("Content-Type", "application/json").setBody("{}"));
+        var job = client.runBackground("demo", "hi");
+        assertTrue(job.cancel());
+        assertTrue(job.isFailed());
     }
 }

@@ -1,6 +1,37 @@
 # Langflow Java SDK
 
-基于 JDK 21、OkHttp 4 和 Jackson 的 Langflow Java SDK。v1 与 v2 使用独立目录和包，避免接口模型混用。
+基于 JDK 21、OkHttp 4 和 Jackson 的 Langflow Java SDK。当前版本与 Python SDK
+`0.3.0` 对齐，v1 与 v2 使用独立目录和包，避免接口模型混用。
+
+## Spring Boot 集成
+
+SDK 保持框架无关，不引入 Spring Boot 依赖。在应用自己的配置类中注册需要的客户端：
+
+```yaml
+langflow:
+  base-url: ${LANGFLOW_BASE_URL:http://localhost:7860}
+  api-key: ${LANGFLOW_API_KEY:}
+  timeout:
+    connect: 10s
+    read: 60s
+    write: 60s
+    call: 90s
+```
+
+```java
+@Configuration
+public class LangflowConfiguration {
+    @Bean(destroyMethod = "close")
+    LangflowClient langflowClient(
+            @Value("${langflow.base-url}") String baseUrl,
+            @Value("${langflow.api-key:}") String apiKey) {
+        return LangflowClient.builder(baseUrl)
+            .apiKey(apiKey)
+            .build();
+    }
+```
+
+之后可通过构造器注入使用。完整 v1、异步 v1 和 v2 配置参见 `src/sdk-java-springboot-demo`。
 
 ## 构建
 
@@ -56,7 +87,50 @@ SSE 基于 `okhttp-sse`，返回 JDK `Flow.Publisher`：
 client.stream("my-flow", new RunRequest("你好")).subscribe(subscriber);
 ```
 
-v1 当前包含 Flow CRUD、运行与 SSE、Project CRUD；模型位于 `org.langflow.sdk.v1.model`。
+v1 当前包含 Flow CRUD、运行与 SSE、后台运行、Project CRUD 与 ZIP 导入导出，以及
+适合 Git 管理的 flow push/pull 文件工具；模型位于 `org.langflow.sdk.v1.model`。
+
+```java
+var pushed = client.push(Path.of("flows/my-flow.json"));
+var normalized = client.pull(pushed.flow().id().toString(), Path.of("flows/my-flow.json"));
+
+var job = client.runBackground("my-flow", "你好");
+var response = job.waitForCompletion(Duration.ofSeconds(60));
+```
+
+`FlowSerialization.normalizeFlow(...)` 会移除实例相关字段、清空密码字段、移除节点拖拽状态并递归排序 key，
+与 Python SDK 的默认规范化行为一致。
+
+需要控制 Python SDK 中的各项规范化开关时：
+
+```java
+var options = new FlowSerialization.Options(
+    true,  // stripVolatile
+    true,  // stripSecrets
+    true,  // sortKeys
+    true,  // codeAsLines
+    true   // stripNodeVolatile
+);
+var normalized = FlowSerialization.normalizeFlow(raw, options);
+```
+
+异步客户端返回 `CompletableFuture`：
+
+```java
+try (var async = AsyncLangflowClient.builder("http://localhost:7860")
+        .apiKey(System.getenv("LANGFLOW_API_KEY"))
+        .build()) {
+    async.run(flowId, "你好").thenAccept(response -> System.out.println(response.getChatOutput()));
+}
+```
+
+Python SDK 使用的 `langflow-environments.toml` 可直接复用：
+
+```java
+try (var client = Environments.client("staging")) {
+    client.listFlows();
+}
+```
 
 ## v2
 
@@ -68,9 +142,21 @@ try (var client = LangflowClient.builder("http://localhost:7860")
         .apiKey(System.getenv("LANGFLOW_API_KEY"))
         .build()) {
     var result = client.execute(WorkflowRequest.synchronous(
-        "my-flow", Map.of("ChatInput-1.input_value", "你好")));
+        "67ccd2be-17f0-8190-81ff-3bb2cf6508e6", "你好"));
 }
 ```
 
-v2 包含 Workflow 同步/后台执行、任务状态查询和停止任务；模型位于 `org.langflow.sdk.v2.model`。服务端目前对 v2 streaming 返回 501，因此 SDK 未伪造不可用的流式能力。
+v2 使用当前原生 Workflow API 请求模型，支持 `sync`、`stream`、`background` 三种 mode，
+以及 `input_value`、`tweaks`、`session_id`、`stream_protocol`、局部运行和幂等后台提交。
+此外支持任务状态与停止、SSE 后台事件重连、HITL pending 查询及 resume：
 
+```java
+var job = (WorkflowJob) client.execute(WorkflowRequest.background(flowId, "处理这份文件"));
+client.events(job.jobId(), lastEventId).subscribe(subscriber);
+
+var pending = client.pending(flowId);
+client.resume(job.jobId(), new WorkflowResumeRequest(
+    pending.getFirst().requestId(), Map.of("action_id", "approve")));
+```
+
+模型位于 `org.langflow.sdk.v2.model`。
