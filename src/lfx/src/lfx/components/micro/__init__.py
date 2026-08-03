@@ -8,13 +8,16 @@ from lfx.components._importing import import_mod
 
 if TYPE_CHECKING:
     from lfx.components.micro.micro_model_classifier import MicroModelClassifierComponent
+    from lfx.components.micro.micro_model_detect import MicroModelDetectComponent
 
 _dynamic_imports = {
     "MicroModelClassifierComponent": "micro_model_classifier",
+    "MicroModelDetectComponent": "micro_model_detect",
 }
 
 __all__ = [
     "MicroModelClassifierComponent",
+    "MicroModelDetectComponent",
 ]
 
 
