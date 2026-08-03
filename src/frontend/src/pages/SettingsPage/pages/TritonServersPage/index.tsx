@@ -221,7 +221,7 @@ export default function TritonServersPage() {
                 setDeleteModalOpen(false);
                 setServerToDelete(null);
               }}
-              description={"Triton Server"}
+              description={"micro-model Server"}
             />
             {modelsToVarsOpen && serverForVars && (
               <AddTritonModelsToVariablesModal

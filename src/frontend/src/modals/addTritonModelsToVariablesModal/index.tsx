@@ -44,7 +44,7 @@ export default function AddTritonModelsToVariablesModal({
         .trim()
         .replace(/\s+/g, "_")
         .replace(/[^a-zA-Z0-9_]/g, "");
-      setNamePrefix(`triton_${sanitized || "server"}`);
+      setNamePrefix(`micro-model_${sanitized || "server"}`);
       setSelected(new Set());
     }
   }, [open, server.name]);
