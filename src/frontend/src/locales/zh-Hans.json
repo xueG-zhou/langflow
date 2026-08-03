@@ -384,7 +384,7 @@
   "auth.confirmPasswordPlaceholder": "请确认您的密码",
   "auth.confirmPasswordRequired": "请确认您的密码",
   "auth.haveAccount": "已有账户？",
-  "auth.loginTitle": "登录 Langflow",
+  "auth.loginTitle": "登录 AIFlow",
   "auth.noAccount": "没有帐户？",
   "auth.passwordEnterRequired": "请输入密码",
   "auth.passwordLabel": "密码",

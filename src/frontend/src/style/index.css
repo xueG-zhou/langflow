@@ -21,7 +21,7 @@
     --border: 240 6% 90%; /* hsl(240, 6%, 90%) */
     --input: 240 6% 90%; /* hsl(240, 6%, 90%) */
     --primary-foreground: 0 0% 100%; /* hsl(0, 0%, 100%) */
-    --primary: 0 0% 0%; /* hsl(0, 0%, 0%) */
+    --primary: 210 100% 62%; /* hsl(0, 0%, 0%) */
     --secondary: 0 0% 100%; /* hsl(0, 0%, 100%) */
     --secondary-foreground: 240 4% 16%; /* hsl(240, 4%, 16%) */
     --accent: 240 5% 96%; /* hsl(240, 5%, 96%) */
@@ -30,8 +30,8 @@
     --destructive-foreground: 0 0% 100%; /* hsl(0, 0%, 100%) */
     --accent-amber: 26 90% 37%; /* hsl(26, 90%, 37%) */
     --accent-amber-foreground: 26 90% 37%; /* hsl(26, 90%, 37%) */
-    --ring: 0 0% 0%; /* hsl(0, 0%, 0%) */
-    --primary-hover: 240 4% 16%; /* hsl(240, 4%, 16%) */
+    --ring: 210 100% 72%; /* hsl(0, 0%, 0%) */
+    --primary-hover: 210 100% 72%; /* hsl(240, 4%, 16%) */
     --secondary-hover: 240 6% 90%; /* hsl(240, 6%, 90%) */
     --placeholder-foreground: 240 5% 40%; /* hsl(240, 5%, 40%) — darkened for WCAG 1.4.3 contrast ≥4.5:1 on white */
     --canvas: 240 5% 96%; /* hsl(240, 5%, 96%) */

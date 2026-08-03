@@ -12,21 +12,27 @@ import i18n, { loadLanguage } from "./i18n";
 describe("loadLanguage", () => {
   beforeEach(() => {
     // Clear cached non-English bundles between tests
-    ["fr", "ja", "es", "de", "pt", "zh-Hans"].forEach((lang) => {
+    ["en", "fr", "ja", "es", "de", "pt"].forEach((lang) => {
       if (i18n.hasResourceBundle(lang, "translation")) {
         i18n.removeResourceBundle(lang, "translation");
       }
     });
   });
 
-  it("does not call addResourceBundle for 'en' (already statically loaded)", async () => {
+  it("does not call addResourceBundle for 'zh-Hans' (already statically loaded)", async () => {
     const spy = jest.spyOn(i18n, "addResourceBundle");
-    await loadLanguage("en");
+    await loadLanguage("zh-Hans");
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
 
-  it("always has 'en' bundle available (statically bundled)", () => {
+  it("always has 'zh-Hans' bundle available (statically bundled)", () => {
+    expect(i18n.hasResourceBundle("zh-Hans", "translation")).toBe(true);
+  });
+
+  it("loads and registers 'en' bundle lazily", async () => {
+    expect(i18n.hasResourceBundle("en", "translation")).toBe(false);
+    await loadLanguage("en");
     expect(i18n.hasResourceBundle("en", "translation")).toBe(true);
   });
 

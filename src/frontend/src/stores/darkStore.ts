@@ -8,7 +8,7 @@ export const useDarkStore = create<DarkStoreType>((set, get) => ({
   dark: (() => {
     const stored = window.localStorage.getItem("isDark");
     if (stored !== null) return JSON.parse(stored);
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return false;
   })(),
   stars: startedStars,
   version: "",

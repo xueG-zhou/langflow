@@ -46,7 +46,7 @@ const LanguageFormComponent = () => {
             {SUPPORTED_LANGUAGES.map((lang) => (
               <SelectItem key={lang.code} value={lang.code}>
                 {lang.label}
-                {lang.code === "en"
+                {lang.code === "zh-Hans"
                   ? ` (${t("settings.languageRecommended")})`
                   : ""}
               </SelectItem>
