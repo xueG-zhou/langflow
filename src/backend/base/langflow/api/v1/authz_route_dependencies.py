@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 
-from langflow.api.utils import CurrentActiveUser, DbSession
+from langflow.api.utils import CurrentActiveUser, DbSession, DbSessionReadOnly
 from langflow.api.v1.flows_helpers import _read_flow
 from langflow.services.authorization import FlowAction, ensure_flow_permission
 from langflow.services.authorization.fetch import deny_to_404
@@ -23,9 +23,10 @@ async def _get_authorized_flow(
     flow_id: UUID,
     current_user: CurrentActiveUser,
     session: DbSession,
+    defer_data: bool = False,
 ) -> Flow:
     """Load a flow (share-aware when the plugin supports it) and enforce *act*."""
-    flow = await _read_flow(session, flow_id, current_user.id)
+    flow = await _read_flow(session, flow_id, current_user.id, defer_data=defer_data)
     if flow is None:
         raise HTTPException(status_code=404, detail="Flow not found")
     try:
@@ -65,6 +66,21 @@ async def get_authorized_flow_for_read(
     return await _get_authorized_flow(FlowAction.READ, flow_id=flow_id, current_user=current_user, session=session)
 
 
+async def get_authorized_flow_metadata_for_read(
+    flow_id: UUID,
+    current_user: CurrentActiveUser,
+    session: DbSessionReadOnly,
+) -> Flow:
+    """Return readable flow metadata without loading the graph JSON."""
+    return await _get_authorized_flow(
+        FlowAction.READ,
+        flow_id=flow_id,
+        current_user=current_user,
+        session=session,
+        defer_data=True,
+    )
+
+
 async def get_authorized_flow_for_write(
     flow_id: UUID,
     current_user: CurrentActiveUser,
@@ -97,6 +113,7 @@ async def require_flow_create_permission(
 
 
 AuthorizedReadFlow = Annotated[Flow, Depends(get_authorized_flow_for_read)]
+AuthorizedReadFlowMetadata = Annotated[Flow, Depends(get_authorized_flow_metadata_for_read)]
 AuthorizedWriteFlow = Annotated[Flow, Depends(get_authorized_flow_for_write)]
 AuthorizedDeleteFlow = Annotated[Flow, Depends(get_authorized_flow_for_delete)]
 RequireFlowCreate = Annotated[None, Depends(require_flow_create_permission)]

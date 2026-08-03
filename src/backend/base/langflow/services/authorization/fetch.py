@@ -26,6 +26,7 @@ async def authorized_or_owner_scoped(
     resource_id: UUID,
     owner_column: InstrumentedAttribute,
     owner_id: UUID,
+    statement_options: tuple = (),
 ) -> T | None:
     """Load by id when cross-user fetch is supported; otherwise scope by owner."""
     authz = get_authorization_service()
@@ -34,6 +35,8 @@ async def authorized_or_owner_scoped(
         stmt = select(model).where(id_column == resource_id)
     else:
         stmt = select(model).where(id_column == resource_id).where(owner_column == owner_id)
+    if statement_options:
+        stmt = stmt.options(*statement_options)
     return (await session.exec(stmt)).first()
 
 

@@ -25,6 +25,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic import PydanticDeprecatedSince20
 from pydantic_core import PydanticSerializationError
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.middleware.gzip import GZipMiddleware
 
 from langflow.api import health_check_router, log_router
 from langflow.api.router import router
@@ -708,6 +709,10 @@ def create_app():
     app.add_middleware(
         ContentSizeLimitMiddleware,
     )
+    # Flow graphs and component schemas are highly repetitive JSON. A low
+    # compression level substantially reduces transfer size without putting
+    # expensive level-9 compression on the request path.
+    app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=3)
     app.add_middleware(RequestTimingMiddleware)
 
     add_sentry_middleware(app)
